@@ -35,7 +35,18 @@ _ROTATION_ID_ENV = "NODE_KEY_ROTATION_ID"
 # Key loading (ENV-first, file fallback, ephemeral last-resort)
 # ---------------------------------------------------------------------------
 
-def load_private_key() -> Ed25519PrivateKey:
+def load_private_key(path: str | None = None) -> Ed25519PrivateKey:
+    # Explicit path → direct file I/O, ENV skipped (test / admin use)
+    if path is not None:
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                return load_pem_private_key(f.read(), password=None)
+        private = Ed25519PrivateKey.generate()
+        pem = private.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+        with open(path, "wb") as f:
+            f.write(pem)
+        return private
+
     # 1. Production path: key injected as base64 PEM via secret manager / env var
     key_b64 = os.getenv(_NODE_KEY_ENV)
     if key_b64:
@@ -71,7 +82,7 @@ def public_key_bytes(private: Ed25519PrivateKey) -> bytes:
 
 
 def node_id(pub_bytes: bytes) -> str:
-    return hashlib.sha256(pub_bytes).hexdigest()[:16]
+    return hashlib.sha256(pub_bytes).hexdigest()
 
 
 def get_rotation_id() -> str:
