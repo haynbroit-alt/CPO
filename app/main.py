@@ -1,4 +1,5 @@
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -36,17 +37,19 @@ _PUB_BYTES = public_key_bytes(_PRIVATE_KEY)
 NODE_ID = node_id(_PUB_BYTES)
 ROTATION_ID = get_rotation_id()
 
+@asynccontextmanager
+async def _lifespan(application: FastAPI):
+    print(f"[Proof Protocol] Node ID : {NODE_ID}")
+    print(f"[Proof Protocol] Worlds  : {sorted(SUPPORTED_WORLDS)}")
+    yield
+
+
 app = FastAPI(
     title="Proof Protocol Node",
     version="1.0.0",
     description="Unified verifiable computation layer across all AI paradigm worlds.",
+    lifespan=_lifespan,
 )
-
-
-@app.on_event("startup")
-async def _startup() -> None:
-    print(f"[Proof Protocol] Node ID : {NODE_ID}")
-    print(f"[Proof Protocol] Worlds  : {sorted(SUPPORTED_WORLDS)}")
 
 
 # ---------------------------------------------------------------------------
