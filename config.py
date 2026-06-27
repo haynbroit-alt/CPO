@@ -29,3 +29,6 @@ LEDGER_FILE = os.getenv("LEDGER_FILE", "ledger.jsonl")
 
 # Brain (LLM code generator)
 BRAIN_MODEL = os.getenv("BRAIN_MODEL", "claude-haiku-4-5")
+
+# Executor backend: "docker" (default, requires Docker socket) or "subprocess" (Render / no-Docker)
+EXECUTOR_BACKEND = os.getenv("EXECUTOR_BACKEND", "docker")
