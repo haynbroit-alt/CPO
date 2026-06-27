@@ -1,8 +1,34 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 from config import SUPPORTED_WORLDS, DEFAULT_WORLD
+
+
+class CPOState(str, Enum):
+    PROPOSED = "proposed"
+    ATTESTED = "attested"
+    VERIFIED = "verified"
+    CONTESTED = "contested"
+    INVALID = "invalid"
+
+
+class PeerNode(BaseModel):
+    node_id: str
+    public_key: str
+    url: str
+    announced_at: Optional[datetime] = None
+
+
+class Attestation(BaseModel):
+    node_id: str
+    public_key: str
+    cpo_hash: str
+    verdict: bool
+    signature: str
+    timestamp: datetime
 
 
 class ExecutionSpec(BaseModel):
