@@ -140,6 +140,9 @@ tightly controlled, re-execution is both cheap and conclusive.
   \item A formal definition of \emph{observable equivalence} that precisely
         specifies when two executions are considered equal
         (Section~\ref{sec:equivalence}).
+  \item A distributed network model formalising quorum attestation, world
+        versioning, CPO lifecycle states, and conflict resolution
+        (Section~\ref{sec:network}).
   \item A security analysis with an explicit threat model and non-goals
         (Section~\ref{sec:security}).
   \item A reference implementation demonstrating practical deployability.
@@ -586,6 +589,194 @@ prohibitive.  ZK systems are preferable when re-execution is impossible or
 the verifier has no access to a trusted runtime.
 
 % ============================================================
+\section{Distributed Network Model}
+\label{sec:network}
+
+A single-node deployment provides integrity and authenticity but not
+independence of verification.  This section formalises the distributed
+extension of \textsc{Proof Protocol}: a network of independent nodes that
+jointly attest CPOs via a quorum protocol, with explicit handling of world
+versioning and output divergence.
+
+\subsection{Network Participants}
+
+\begin{definition}[Proof Network]
+A \emph{Proof Network} is a tuple $\mathcal{G} = (\mathcal{N}, \mathcal{W}_v, \mathcal{L})$
+where:
+\begin{itemize}
+  \item $\mathcal{N} = \{n_1, \ldots, n_m\}$ is a finite set of nodes, each
+        holding a unique Ed25519 keypair $(\mathit{sk}_i, \mathit{pk}_i)$.
+  \item $\mathcal{W}_v$ is a \emph{versioned world registry}
+        (Definition~\ref{def:worldreg}).
+  \item $\mathcal{L}$ is a shared append-only ledger, replicated across
+        nodes via gossip.
+\end{itemize}
+\end{definition}
+
+\subsection{Versioned World Registry}
+\label{sec:worldver}
+
+A world identifier alone is insufficient for cross-node reproducibility:
+two nodes running \texttt{symbolic:latest} may use different image layers
+if one has not pulled recently.  We require pinned image digests.
+
+\begin{definition}[Versioned World Registry]
+\label{def:worldreg}
+A \emph{versioned world registry} $\mathcal{W}_v$ is a mapping
+\[
+  \mathcal{W}_v : \textit{world\_name} \;\longrightarrow\;
+    (\textit{image\_tag},\; \textit{digest},\; \textit{valid\_from})^*
+\]
+where \textit{digest} $\in \{0,1\}^{256}$ is the SHA-256 content hash of
+the OCI image manifest, and $\textit{valid\_from} \in \mathbb{Z}$ is the
+Unix timestamp from which this version is considered canonical.
+
+A CPO $\mathcal{P}$ is \emph{world-version-consistent} with $\mathcal{W}_v$
+if the image digest stored in $\mathcal{P}.\textit{env}.\textit{image\_digest}$
+matches the active entry of $\mathcal{W}_v(\mathcal{P}.w)$ at time
+$\mathcal{P}.t$.
+\end{definition}
+
+Requiring the image digest in $\textit{env}$ (and thus in $h$) ensures that
+world-version drift cannot produce a silent $\mathrm{ReplayOK} = \bot$:
+a version mismatch is explicit and attributable.
+
+\subsection{CPO Lifecycle State Machine}
+\label{sec:statemachine}
+
+Each CPO progresses through a finite set of network-observable states.
+
+\begin{definition}[CPO State]
+\label{def:state}
+Let $\mathcal{S} = \{\textsc{Proposed},\; \textsc{Attested},\;
+\textsc{Contested},\; \textsc{Verified},\; \textsc{Invalid}\}$ be the set
+of CPO network states.  A CPO is born in \textsc{Proposed} and transitions
+according to the rules of Table~\ref{tab:transitions}.
+\end{definition}
+
+\begin{table}[h]
+\centering
+\caption{CPO lifecycle transitions.  $A(\mathcal{P})$ denotes the set of
+nodes that have broadcast an attestation for $\mathcal{P}$.}
+\label{tab:transitions}
+\begin{tabular}{llll}
+\toprule
+\textbf{From} & \textbf{Condition} & \textbf{To} & \textbf{Action} \\
+\midrule
+\textsc{Proposed}  & $|A(\mathcal{P})| \geq k$, no conflict
+                   & \textsc{Attested}  & broadcast attestation \\
+\textsc{Proposed}  & conflict detected (Def.~\ref{def:conflict})
+                   & \textsc{Contested} & broadcast conflict notice \\
+\textsc{Attested}  & $\mathrm{Verify}(\mathcal{P}) = \top$ by $k$ nodes
+                   & \textsc{Verified}  & mark ledger entry \\
+\textsc{Attested}  & conflict detected post-attest
+                   & \textsc{Contested} & broadcast conflict notice \\
+\textsc{Contested} & conflict resolved (Def.~\ref{def:resolution})
+                   & \textsc{Verified} or \textsc{Invalid} & per resolution rule \\
+\textsc{Invalid}   & — & \textsc{Invalid} & absorbing state \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:statemachine} visualises these transitions.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=1.2cm and 2.0cm,
+  state/.style={draw, rounded corners=5pt, minimum width=2.2cm,
+                minimum height=0.7cm, align=center, font=\small\bfseries},
+  arrow/.style={-{Stealth[length=4pt]}, thick},
+  lbl/.style={font=\footnotesize\itshape, text=gray!80},
+]
+\node[state, fill=blue!10]    (P)  {\textsc{Proposed}};
+\node[state, fill=orange!15,  right=2.4cm of P]  (A)  {\textsc{Attested}};
+\node[state, fill=green!15,   right=2.4cm of A]  (V)  {\textsc{Verified}};
+\node[state, fill=yellow!20,  below=1.4cm of A]  (C)  {\textsc{Contested}};
+\node[state, fill=red!12,     below=1.4cm of V]  (I)  {\textsc{Invalid}};
+
+\draw[arrow] (P) -- node[lbl,above]{$|A|\!\geq\!k$} (A);
+\draw[arrow] (A) -- node[lbl,above]{replay $\top$} (V);
+\draw[arrow] (P) -- node[lbl,left]{conflict} (C);
+\draw[arrow] (A) -- node[lbl,right]{conflict} (C);
+\draw[arrow] (C) to[bend left=15]  node[lbl,below]{resolved $\top$} (V);
+\draw[arrow] (C) -- node[lbl,right]{resolved $\bot$} (I);
+\end{tikzpicture}
+\caption{CPO lifecycle state machine in a distributed Proof Network.
+\textsc{Verified} and \textsc{Invalid} are absorbing states.}
+\label{fig:statemachine}
+\end{figure}
+
+\subsection{Quorum Attestation}
+
+\begin{definition}[Quorum]
+\label{def:quorum}
+Given a network $\mathcal{G}$ with $|\mathcal{N}| = m$ nodes, a
+\emph{quorum threshold} $k \in \mathbb{N}$ with $\lceil m/2 \rceil \leq k \leq m$,
+and a CPO $\mathcal{P}$, the quorum attestation predicate is:
+\[
+  \mathrm{Quorum}_k(\mathcal{P}) \;\triangleq\;
+    \bigl|\{n_i \in \mathcal{N} \mid \mathrm{Verify}_{n_i}(\mathcal{P}) = \top\}\bigr| \;\geq\; k
+\]
+where $\mathrm{Verify}_{n_i}$ denotes execution of Algorithm~\ref{alg:verify}
+by node $n_i$ in its own BEE.
+\end{definition}
+
+Requiring $k > m/2$ ensures that no two disjoint quorums can attest
+conflicting CPOs simultaneously — a \emph{Byzantine fault tolerance} property
+under the assumption that at most $\lfloor(k-1)/2\rfloor$ nodes are
+compromised.
+
+\subsection{Conflict Detection and Resolution}
+\label{sec:conflict}
+
+Two nodes may independently produce CPOs for the same logical computation
+yet report different results — due to stochastic code, world-version drift,
+or a compromised node.
+
+\begin{definition}[CPO Conflict]
+\label{def:conflict}
+Two CPOs $\mathcal{P}$ and $\mathcal{P}'$ are in \emph{conflict} if:
+\begin{align}
+  \mathcal{P}.\textit{code} &= \mathcal{P}'.\textit{code} \label{eq:c1} \\
+  \mathcal{P}.w &= \mathcal{P}'.w \label{eq:c2} \\
+  \mathcal{P}.\textit{env}.\textit{image\_digest} &=
+    \mathcal{P}'.\textit{env}.\textit{image\_digest} \label{eq:c3} \\
+  \mathcal{P}.R &\not\approx \mathcal{P}'.R \label{eq:c4}
+\end{align}
+Conditions~\eqref{eq:c1}--\eqref{eq:c3} ensure the same code ran in the
+same world version.  Condition~\eqref{eq:c4} asserts that the observable
+outputs are not equivalent (Definition~\ref{def:equiv}).
+\end{definition}
+
+Note that if world-version-consistency (Definition~\ref{def:worldreg}) is
+enforced, most conflicts indicate either a stochastic program or a
+compromised node, not benign version drift.
+
+\begin{definition}[Conflict Resolution]
+\label{def:resolution}
+Given conflicting CPOs $\mathcal{P}$ and $\mathcal{P}'$, the network
+applies the following resolution strategy in order of precedence:
+
+\begin{enumerate}
+  \item \textbf{Quorum rule}: if $\mathrm{Quorum}_k(\mathcal{P})$ holds but
+        not $\mathrm{Quorum}_k(\mathcal{P}')$, then $\mathcal{P}$ is
+        \textsc{Verified} and $\mathcal{P}'$ is \textsc{Invalid}.
+  \item \textbf{Seed-fixation rule}: if $\mathcal{P}.w$ is a stochastic
+        world and neither CPO fixes an explicit random seed, both are marked
+        \textsc{Contested} with annotation \texttt{non-deterministic}.
+        Neither is \textsc{Invalid} — the conflict is informational.
+  \item \textbf{Attribution rule}: if neither quorum is reached for either
+        CPO, both are marked \textsc{Contested} and the conflicting node
+        identities are logged for human review.
+\end{enumerate}
+\end{definition}
+
+This three-rule hierarchy ensures that deterministic computations converge
+to a unique \textsc{Verified} state, while stochastic ones are flagged
+rather than falsely invalidated.
+
+% ============================================================
 \section{Security Analysis}
 \label{sec:security}
 
@@ -656,8 +847,9 @@ partitioning by world or time window, or migration to a structured event
 store (Kafka, RocksDB), is required.
 
 \paragraph{Single-node trust.}
-Each node is independently trusted.  Quorum-based cross-node verification
-(requiring $k$-of-$n$ agreeing nodes) is a planned extension.
+The reference implementation is single-node.  The quorum and conflict
+resolution model is formalised in Section~\ref{sec:network} but not yet
+implemented; a Byzantine-tolerant gossip layer is future work.
 
 % ============================================================
 \section{Related Work}
