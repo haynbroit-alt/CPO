@@ -1,0 +1,12 @@
+# World: formal  — Z3 + py-aiger model checking / formal verification
+# (Full Coq/Lean kernel requires a separate system-level install;
+#  this image exposes Z3 + py-aiger as the lightweight formal backend)
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir z3-solver py-aiger
+
+RUN groupadd -r sandbox && useradd -r -g sandbox sandbox
+USER sandbox
+WORKDIR /tmp
+
+ENTRYPOINT ["python"]

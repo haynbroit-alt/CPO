@@ -1,0 +1,11 @@
+# World: multimodal  — PyTorch CPU + Pillow for vision/audio proofs
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir Pillow torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+RUN groupadd -r sandbox && useradd -r -g sandbox sandbox
+USER sandbox
+WORKDIR /tmp
+
+ENTRYPOINT ["python"]
