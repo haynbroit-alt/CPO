@@ -4,7 +4,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /health
 
     envVars:
       # Set in Render dashboard → Environment → Secret Files / Env Vars

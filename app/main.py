@@ -66,9 +66,27 @@ def _cpo_canonical_payload(cpo: CPO) -> str:
 @app.get("/")
 def index() -> Dict:
     return {
+        "status": "Proof Protocol Node online",
         "node_id": NODE_ID,
         "worlds": sorted(SUPPORTED_WORLDS),
-        "endpoints": ["/prove", "/ask", "/verify/{cpo_hash}", "/cpo/{cpo_id}", "/ledger"],
+        "endpoints": ["/prove", "/ask", "/verify/{cpo_hash}", "/cpo/{cpo_id}", "/ledger", "/health", "/node"],
+    }
+
+
+@app.get("/health")
+def health() -> Dict:
+    return {"status": "ok"}
+
+
+@app.get("/node")
+def node_info() -> Dict:
+    ledger_size = len(all_cpos())
+    return {
+        "node_id": NODE_ID,
+        "public_key": _PUB_BYTES.hex(),
+        "worlds": sorted(SUPPORTED_WORLDS),
+        "ledger_size": ledger_size,
+        "version": "1.0.0",
     }
 
 
