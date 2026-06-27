@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
+from app.brain import generate_code
 from app.canon import canonicalize
 from app.crypto import (
     load_private_key,
@@ -17,7 +18,7 @@ from app.crypto import (
 from app.executor import execute
 from app.models import CPO, ExecutionResult
 from app.storage import all_cpos, append, find_by_hash, find_by_id
-from config import SUPPORTED_WORLDS
+from config import DEFAULT_WORLD, SUPPORTED_WORLDS
 
 # ---------------------------------------------------------------------------
 # Node initialisation
@@ -67,7 +68,7 @@ def index() -> Dict:
     return {
         "node_id": NODE_ID,
         "worlds": sorted(SUPPORTED_WORLDS),
-        "endpoints": ["/prove", "/verify/{cpo_hash}", "/cpo/{cpo_id}", "/ledger"],
+        "endpoints": ["/prove", "/ask", "/verify/{cpo_hash}", "/cpo/{cpo_id}", "/ledger"],
     }
 
 
@@ -153,3 +154,67 @@ def ledger(world: str | None = None, limit: int = 50) -> List[Dict]:
     if world:
         records = [r for r in records if r.get("world") == world]
     return records[-limit:]
+
+
+# ---------------------------------------------------------------------------
+# Conversational AI interface
+# ---------------------------------------------------------------------------
+
+class AskRequest(BaseModel):
+    question: str
+    world: str = DEFAULT_WORLD
+    metadata: Dict[str, Any] = {}
+
+
+@app.post("/ask", status_code=201)
+def ask(req: AskRequest) -> Dict:
+    """Convert a natural-language question into code, execute it, and return a verifiable proof."""
+    if req.world not in SUPPORTED_WORLDS:
+        raise HTTPException(status_code=422, detail=f"Unknown world '{req.world}'. Supported: {sorted(SUPPORTED_WORLDS)}")
+
+    # 1. Generate code from the question
+    try:
+        code = generate_code(req.question, req.world)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Brain error: {exc}")
+
+    if not code.strip():
+        raise HTTPException(status_code=502, detail="Brain returned empty code")
+
+    # 2. Build a CPO and execute in sandbox
+    cpo = CPO(
+        world=req.world,
+        claim=req.question,
+        code=code,
+        metadata=req.metadata,
+    )
+    cpo.cpo_id = str(uuid.uuid4())
+    cpo.created_by = NODE_ID
+    cpo.created_at = datetime.now(tz=timezone.utc)
+
+    try:
+        result: ExecutionResult = execute(cpo)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Sandbox error: {exc}")
+
+    cpo.result = result
+
+    # 3. Hash → sign → store
+    payload = _cpo_canonical_payload(cpo)
+    cpo.content_hash = sha256(payload)
+    sig_bytes = sign(_PRIVATE_KEY, payload)
+    cpo.signature = sig_bytes.hex()
+    cpo.signer = _PUB_BYTES.hex()
+
+    append(cpo.model_dump())
+
+    return {
+        "answer": result.stdout.strip(),
+        "code": code,
+        "cpo_id": cpo.cpo_id,
+        "world": cpo.world,
+        "proof_hash": cpo.content_hash,
+        "signature": cpo.signature,
+        "exit_code": result.exit_code,
+        "runtime_ms": result.runtime_ms,
+    }

@@ -8,3 +8,9 @@ ledger.jsonl
 *.egg-info/
 dist/
 build/
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc

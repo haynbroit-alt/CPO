@@ -26,3 +26,6 @@ PRIVATE_KEY_FILE = os.getenv("PRIVATE_KEY_FILE", "node_key.pem")
 
 # Storage
 LEDGER_FILE = os.getenv("LEDGER_FILE", "ledger.jsonl")
+
+# Brain (LLM code generator)
+BRAIN_MODEL = os.getenv("BRAIN_MODEL", "claude-haiku-4-5")

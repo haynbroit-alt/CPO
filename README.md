@@ -97,6 +97,40 @@ Re-execute the CPO and verify that the result and signature are consistent.
 
 Browse the append-only ledger, optionally filtered by world.
 
+### `POST /ask`
+
+Conversational interface: supply a natural-language question; the node uses an
+LLM brain to generate Python code, runs it in the sandbox, and returns the
+result together with a full CPO proof.
+
+```json
+{
+  "question": "What is the 10th Fibonacci number?",
+  "world": "llm"
+}
+```
+
+Response:
+
+```json
+{
+  "answer": "55",
+  "code": "a, b = 0, 1\nfor _ in range(9): a, b = b, a+b\nprint(b)",
+  "cpo_id": "...",
+  "world": "llm",
+  "proof_hash": "sha256hex...",
+  "signature": "ed25519hex...",
+  "exit_code": 0,
+  "runtime_ms": 98.4
+}
+```
+
+The CPO is stored in the ledger and retrievable via `GET /cpo/{cpo_id}` and
+`GET /verify/{proof_hash}`.
+
+**Configuration** — set `ANTHROPIC_API_KEY` in your `.env` file.  
+The model used is controlled by the `BRAIN_MODEL` env var (default: `claude-haiku-4-5`).
+
 ## Security Properties
 
 - **Isolation** — each sandbox runs with `network_disabled=True`, `read_only=True`, a memory cap, and `no-new-privileges`.
