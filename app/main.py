@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.brain import generate_code
 from app.canon import canonicalize
 from app.crypto import (
+    get_rotation_id,
     load_private_key,
     node_id,
     public_key_bytes,
@@ -33,6 +34,7 @@ from config import DEFAULT_WORLD, SUPPORTED_WORLDS
 _PRIVATE_KEY = load_private_key()
 _PUB_BYTES = public_key_bytes(_PRIVATE_KEY)
 NODE_ID = node_id(_PUB_BYTES)
+ROTATION_ID = get_rotation_id()
 
 app = FastAPI(
     title="Proof Protocol Node",
@@ -99,6 +101,7 @@ def node_info() -> Dict:
         "worlds": sorted(SUPPORTED_WORLDS),
         "ledger_size": ledger_size,
         "peer_count": len(all_peers()),
+        "rotation_id": ROTATION_ID,
         "version": "1.0.0",
     }
 
@@ -200,6 +203,7 @@ def prove(cpo: CPO) -> Dict:
     cpo.cpo_id = str(uuid.uuid4())
     cpo.created_by = NODE_ID
     cpo.created_at = datetime.now(tz=timezone.utc)
+    cpo.rotation_id = ROTATION_ID
 
     # Execute inside sandbox
     try:
@@ -313,6 +317,7 @@ def ask(req: AskRequest) -> Dict:
     cpo.cpo_id = str(uuid.uuid4())
     cpo.created_by = NODE_ID
     cpo.created_at = datetime.now(tz=timezone.utc)
+    cpo.rotation_id = ROTATION_ID
 
     try:
         result: ExecutionResult = execute(cpo)

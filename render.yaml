@@ -11,6 +11,14 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false          # injected as a secret in the Render dashboard
 
+      # Node identity — generate with: python scripts/generate_node_key.py
+      # then paste the output here as a secret in the Render dashboard
+      - key: NODE_PRIVATE_KEY_B64
+        sync: false
+
+      - key: NODE_KEY_ROTATION_ID
+        value: v1
+
       # Use subprocess executor on Render (no Docker socket available)
       - key: EXECUTOR_BACKEND
         value: subprocess

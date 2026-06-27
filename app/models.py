@@ -60,6 +60,7 @@ class CPO(BaseModel):
     content_hash: Optional[str] = None
     signature: Optional[str] = None
     signer: Optional[str] = None
+    rotation_id: str = "v1"
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("world")
