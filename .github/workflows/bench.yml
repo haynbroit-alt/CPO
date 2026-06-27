@@ -1,0 +1,44 @@
+name: Benchmark
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC — weekly locked measurement
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      n_trials:
+        description: 'Number of trials per world'
+        default: '20'
+        required: false
+
+jobs:
+  benchmark:
+    name: Run benchmark suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install benchmark dependencies
+        run: pip install requests
+
+      - name: Run benchmark
+        env:
+          BASE_URL: ${{ secrets.RENDER_URL }}
+          N_TRIALS: ${{ inputs.n_trials || '20' }}
+          REQUEST_TIMEOUT: '30'
+        run: python benchmarks/run_bench.py
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_id }}
+          path: benchmarks/results_*.csv
+          if-no-files-found: warn
+          retention-days: 90
