@@ -1,0 +1,10 @@
+# World: neuro  — DSPy + LangChain neuro-symbolic reasoning
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir dspy-ai langchain
+
+RUN groupadd -r sandbox && useradd -r -g sandbox sandbox
+USER sandbox
+WORKDIR /tmp
+
+ENTRYPOINT ["python"]
