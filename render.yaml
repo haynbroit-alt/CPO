@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: proof-protocol
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /
+
+    envVars:
+      # Set in Render dashboard → Environment → Secret Files / Env Vars
+      - key: ANTHROPIC_API_KEY
+        sync: false          # injected as a secret in the Render dashboard
+
+      # Use subprocess executor on Render (no Docker socket available)
+      - key: EXECUTOR_BACKEND
+        value: subprocess
+
+      # Key file lives on the persistent disk
+      - key: PRIVATE_KEY_FILE
+        value: /var/data/node_key.pem
+
+      # Ledger also on persistent disk
+      - key: LEDGER_FILE
+        value: /var/data/ledger.jsonl
+
+      - key: BRAIN_MODEL
+        value: claude-haiku-4-5
+
+    # Persistent disk for the Ed25519 key + ledger (survives deploys)
+    disk:
+      name: proof-protocol-data
+      mountPath: /var/data
+      sizeGB: 1
