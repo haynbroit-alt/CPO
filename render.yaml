@@ -15,19 +15,14 @@ services:
       - key: EXECUTOR_BACKEND
         value: subprocess
 
-      # Key file lives on the persistent disk
+      # Key + ledger stored in the app workdir on free tier (ephemeral).
+      # For paid plans: set /var/data/node_key.pem + /var/data/ledger.jsonl
+      # and re-add the disk block below.
       - key: PRIVATE_KEY_FILE
-        value: /var/data/node_key.pem
+        value: node_key.pem
 
-      # Ledger also on persistent disk
       - key: LEDGER_FILE
-        value: /var/data/ledger.jsonl
+        value: ledger.jsonl
 
       - key: BRAIN_MODEL
         value: claude-haiku-4-5
-
-    # Persistent disk for the Ed25519 key + ledger (survives deploys)
-    disk:
-      name: proof-protocol-data
-      mountPath: /var/data
-      sizeGB: 1
