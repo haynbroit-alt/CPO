@@ -54,9 +54,7 @@ Issues = "https://github.com/haynbroit-alt/CPO/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sios"]
-
-[tool.hatch.build.targets.wheel.exclude]
-patterns = [
+exclude = [
     "sios/swarm",
     "sios/agents",
     "sios/discovery",

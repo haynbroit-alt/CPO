@@ -33,10 +33,7 @@ class AuditResult:
                 {
                     "type": f.type.value,
                     "title": f.title,
-                    "vendor": next(
-                        (e.split("=", 1)[1] for e in f.evidence if e.startswith("vendor=")),
-                        "",
-                    ),
+                    "vendor": f.metadata.get("vendor", ""),
                     "estimated_amount": f.estimated_amount,
                     "confidence": round(f.confidence, 2),
                     "currency": f.currency,
