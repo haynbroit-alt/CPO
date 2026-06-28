@@ -4,7 +4,6 @@ WORKDIR /app
 
 # Copy everything before install — hatchling needs sios/ to build the package
 COPY . .
-
 RUN pip install --no-cache-dir ".[cashflow]"
 
 RUN useradd -m appuser && chown -R appuser:appuser /app

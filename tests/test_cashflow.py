@@ -39,7 +39,9 @@ def client(tmp_path, monkeypatch):
     import app.cashflow as cf_module
     importlib.reload(cf_module)
 
-    return TestClient(cf_module.app)
+    # Use context manager so FastAPI lifespan fires → worker thread starts
+    with TestClient(cf_module.app) as client:
+        yield client
 
 
 # ── Upload ────────────────────────────────────────────────────────────────────
