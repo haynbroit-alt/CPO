@@ -528,7 +528,7 @@ def download_report(session_id: str) -> FileResponse:
 
 # ── Health ─────────────────────────────────────────────────────────────────────
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health() -> dict:
     pending = sum(1 for j in _jobs.values() if j.status == "pending")
     running = sum(1 for j in _jobs.values() if j.status == "running")
