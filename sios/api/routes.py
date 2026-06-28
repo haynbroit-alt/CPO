@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import uuid
@@ -9,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from sios.core.ingestion import from_csv, from_json
 from sios.core.models import (
@@ -21,6 +22,7 @@ from sios.core.models import (
 )
 from sios.discovery.engine import DiscoveryEngine
 from sios.discovery.models import Opportunity
+from sios.store import SqliteStore
 from sios.swarm.models import FitnessSignal, Spore as SwarmSpore
 from sios.swarm.node import SwarmNode
 from sios.value_engine.engine import ValueEngine
@@ -28,12 +30,12 @@ from sios.value_engine.engine import ValueEngine
 router = APIRouter(prefix="/sios", tags=["SIOS"])
 
 # ---------------------------------------------------------------------------
-# In-memory stores (replace with PostgreSQL in production)
+# Persistent stores (SQLite-backed, survive restarts)
 # ---------------------------------------------------------------------------
-_transactions: Dict[str, CanonicalTransaction] = {}
-_findings: Dict[str, Finding] = {}
-_pvcs: Dict[str, PVC] = {}
-_opportunities: Dict[str, Opportunity] = {}
+_transactions: SqliteStore[CanonicalTransaction] = SqliteStore("transactions", CanonicalTransaction)
+_findings: SqliteStore[Finding] = SqliteStore("findings", Finding)
+_pvcs: SqliteStore[PVC] = SqliteStore("pvcs", PVC)
+_opportunities: SqliteStore[Opportunity] = SqliteStore("opportunities", Opportunity)
 _discovery_engine = DiscoveryEngine()
 _engine = ValueEngine()
 
@@ -49,6 +51,12 @@ def _swarm() -> SwarmNode:
 
 
 _swarm_node: Optional[SwarmNode] = None
+
+
+def _dataset_hash(transaction_ids: List[str]) -> str:
+    """Deterministic hash of a sorted transaction-ID set (idempotency key)."""
+    key = ",".join(sorted(transaction_ids))
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +78,13 @@ class RecoverRequest(BaseModel):
     recovered_amount: float
     currency: str = "EUR"
     document_refs: List[str] = []
+
+    @field_validator("recovered_amount")
+    @classmethod
+    def _positive_amount(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("recovered_amount must be positive")
+        return v
     data_refs: List[str] = []
     beneficiary: str
     cpo_id: Optional[str] = None
@@ -120,13 +135,27 @@ def normalize(transaction_ids: Optional[List[str]] = None) -> Dict:
 
 @router.post("/detect", status_code=201)
 def detect(req: DetectRequest) -> Dict:
-    """Run all Value Engine detectors and store resulting Findings."""
+    """Run all Value Engine detectors and store resulting Findings (idempotent)."""
     txns = _get_transactions(req.transaction_ids)
     if not txns:
         raise HTTPException(status_code=422, detail="No transactions available. Ingest first.")
 
+    # Idempotency: if we've already detected on this exact set of transactions, return cached
+    txn_ids = [t.id for t in txns]
+    ds_hash = _dataset_hash(txn_ids)
+    cached = _findings.find_by_json("$.metadata.dataset_hash", ds_hash)
+    if cached:
+        summary = _engine.summary(cached)
+        return {
+            "status": "cached",
+            "new_findings": 0,
+            "finding_ids": [f.id for f in cached],
+            "summary": summary,
+        }
+
     new_findings = _engine.run(txns)
     for f in new_findings:
+        f.metadata["dataset_hash"] = ds_hash
         _findings[f.id] = f
 
     summary = _engine.summary(new_findings)
@@ -431,5 +460,5 @@ def swarm_purge() -> Dict:
 
 def _get_transactions(ids: Optional[List[str]]) -> List[CanonicalTransaction]:
     if ids is None:
-        return list(_transactions.values())
-    return [_transactions[i] for i in ids if i in _transactions]
+        return _transactions.values()
+    return [t for i in ids if (t := _transactions.get(i)) is not None]

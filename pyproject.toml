@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sios"
+version = "1.0.0"
+description = "Find hidden financial losses in your data. Proved, not predicted."
+readme = "QUICKSTART.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["finance", "audit", "anomaly-detection", "cost-optimization", "proof"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pydantic>=2.7.0",
+    "typer>=0.12.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.34.0",
+]
+stripe = [
+    "stripe>=9.0.0",
+]
+server = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "python-multipart>=0.0.9",
+    "anthropic>=0.40.0",
+    "cryptography>=42.0.0",
+    "docker>=7.0.0",
+    "python-dotenv>=1.0.0",
+]
+all = [
+    "sios[aws,stripe,server]",
+]
+
+[project.scripts]
+sios = "sios.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/haynbroit-alt/CPO"
+Repository = "https://github.com/haynbroit-alt/CPO"
+Issues = "https://github.com/haynbroit-alt/CPO/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sios"]
+
+[tool.hatch.build.targets.wheel.exclude]
+patterns = [
+    "sios/swarm",
+    "sios/agents",
+    "sios/discovery",
+    "tests",
+    "examples",
+    "axiom",
+    "integrations",
+]

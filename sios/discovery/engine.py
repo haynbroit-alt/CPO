@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Optional
 
 from .analyzers import (
@@ -14,6 +15,8 @@ from .scanners.arxiv import ArxivScanner
 from .scanners.base import BaseScanner, RawDocument
 from .scanners.pubmed import PubMedScanner
 from .scanners.wikipedia import WikipediaScanner
+
+logger = logging.getLogger(__name__)
 
 
 class DiscoveryEngine:
@@ -47,17 +50,26 @@ class DiscoveryEngine:
     ) -> List[RawDocument]:
         docs: List[RawDocument] = []
 
-        docs.extend(self._arxiv.scan(
-            categories=arxiv_categories or ["cs.AI", "physics.gen-ph"],
-            max_results=arxiv_max,
-        ))
-        docs.extend(self._pubmed.scan(query=pubmed_query, max_results=pubmed_max))
-        docs.extend(self._wiki.scan(topics=wikipedia_topics))
+        for name, fn in [
+            ("arXiv", lambda: self._arxiv.scan(
+                categories=arxiv_categories or ["cs.AI", "physics.gen-ph"],
+                max_results=arxiv_max,
+            )),
+            ("PubMed", lambda: self._pubmed.scan(query=pubmed_query, max_results=pubmed_max)),
+            ("Wikipedia", lambda: self._wiki.scan(topics=wikipedia_topics)),
+        ]:
+            try:
+                results = fn()
+                docs.extend(results)
+                logger.debug("%s: %d documents fetched", name, len(results))
+            except Exception as exc:
+                logger.warning("Scanner %s failed: %s", name, exc)
+
         for scanner in self._extra:
             try:
                 docs.extend(scanner.scan())
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Extra scanner %s failed: %s", type(scanner).__name__, exc)
 
         return docs
 
