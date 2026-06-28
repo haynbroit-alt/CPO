@@ -15,7 +15,7 @@ def _safe(text: str) -> str:
         text
         .replace("—", "-")   # em dash
         .replace("–", "-")   # en dash
-        .replace("‘", "'").replace("’", "'")
+        .replace("'", "'").replace("'", "'")
         .replace("“", '"').replace("”", '"')
         .replace("…", "...")
         .encode("latin-1", errors="replace").decode("latin-1")
@@ -24,7 +24,7 @@ def _safe(text: str) -> str:
 
 def create_report(result: "AuditResult", cpo: str, session_id: str, reports_dir: str = "reports") -> str:
     try:
-        from fpdf import FPDF
+        from fpdf import FPDF, XPos, YPos
     except ImportError as e:
         raise ImportError("PDF generation requires fpdf2. Run: pip install fpdf2") from e
 
@@ -32,17 +32,18 @@ def create_report(result: "AuditResult", cpo: str, session_id: str, reports_dir:
 
     pdf = FPDF()
     pdf.add_page()
-    # Use default 10mm margins; work with effective page width throughout
     W = pdf.epw  # effective page width (~190mm on A4)
+
+    NL = {"new_x": XPos.LMARGIN, "new_y": YPos.NEXT}
 
     # ── Header ────────────────────────────────────────────────────────────────
     pdf.set_font("Helvetica", "B", 22)
-    pdf.cell(W, 12, "SIOS AUDIT REPORT", ln=True, align="C")
+    pdf.cell(W, 12, "SIOS AUDIT REPORT", align="C", **NL)
 
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(W, 6, f"Proof (CPO): {cpo[:32]}...", ln=True, align="C")
-    pdf.cell(W, 6, "Every finding is reproducible and cryptographically verifiable.", ln=True, align="C")
+    pdf.cell(W, 6, f"Proof (CPO): {cpo[:32]}...", align="C", **NL)
+    pdf.cell(W, 6, "Every finding is reproducible and cryptographically verifiable.", align="C", **NL)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(6)
 
@@ -54,15 +55,15 @@ def create_report(result: "AuditResult", cpo: str, session_id: str, reports_dir:
     # ── Summary box ───────────────────────────────────────────────────────────
     pdf.set_fill_color(245, 245, 245)
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(W, 10, f"Estimated recoverable: {result.estimated_savings:,.0f} {result.currency}", ln=True, fill=True)
+    pdf.cell(W, 10, f"Estimated recoverable: {result.estimated_savings:,.0f} {result.currency}", fill=True, **NL)
     pdf.set_font("Helvetica", "", 11)
-    pdf.cell(W, 8, f"Findings: {len(result.findings)}", ln=True, fill=True)
-    pdf.cell(W, 8, f"Transactions analyzed: {result.dataset_rows}", ln=True, fill=True)
+    pdf.cell(W, 8, f"Findings: {len(result.findings)}", fill=True, **NL)
+    pdf.cell(W, 8, f"Transactions analyzed: {result.dataset_rows}", fill=True, **NL)
     pdf.ln(6)
 
     # ── Findings ──────────────────────────────────────────────────────────────
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(W, 10, "Findings", ln=True)
+    pdf.cell(W, 10, "Findings", **NL)
     pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + W, pdf.get_y())
     pdf.ln(4)
 
@@ -74,7 +75,7 @@ def create_report(result: "AuditResult", cpo: str, session_id: str, reports_dir:
         conf_str = f"conf: {finding.confidence:.0%}"
 
         pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(W, 8, _safe(f"[{label}]  {amount_str}  ({conf_str})"), ln=True)
+        pdf.cell(W, 8, _safe(f"[{label}]  {amount_str}  ({conf_str})"), **NL)
 
         pdf.set_font("Helvetica", "", 10)
         pdf.multi_cell(W, 6, _safe(finding.title))
@@ -89,7 +90,7 @@ def create_report(result: "AuditResult", cpo: str, session_id: str, reports_dir:
             pdf.set_font("Helvetica", "", 9)
             pdf.set_text_color(40, 100, 40)
             for action in finding.recommended_actions[:2]:
-                pdf.cell(W, 6, _safe(f"  -> {action}"), ln=True)
+                pdf.cell(W, 6, _safe(f"  -> {action}"), **NL)
             pdf.set_text_color(0, 0, 0)
 
         pdf.ln(4)
