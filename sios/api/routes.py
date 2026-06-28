@@ -76,8 +76,12 @@ class DetectRequest(BaseModel):
 class RecoverRequest(BaseModel):
     finding_id: str
     recovered_amount: float
+    beneficiary: str
     currency: str = "EUR"
     document_refs: List[str] = []
+    data_refs: List[str] = []
+    cpo_id: Optional[str] = None
+    notes: str = ""
 
     @field_validator("recovered_amount")
     @classmethod
@@ -85,10 +89,6 @@ class RecoverRequest(BaseModel):
         if v <= 0:
             raise ValueError("recovered_amount must be positive")
         return v
-    data_refs: List[str] = []
-    beneficiary: str
-    cpo_id: Optional[str] = None
-    notes: str = ""
 
 
 # ---------------------------------------------------------------------------

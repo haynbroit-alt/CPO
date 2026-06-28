@@ -58,6 +58,7 @@ class AuditSession(BaseModel):
     stripe_session_id: str = ""
     created_at: str = ""
     completed: bool = False
+    result_json: str = ""  # cached run result (JSON) — avoids re-running detection
 
 
 _sessions: SqliteStore[AuditSession] = SqliteStore("cashflow_sessions", AuditSession)
@@ -202,6 +203,10 @@ def run(session_id: str) -> dict:
     if not sess:
         raise HTTPException(404, "Session not found")
 
+    # Return cached result if already computed
+    if sess.completed and sess.result_json:
+        return json.loads(sess.result_json)
+
     # Verify payment
     if not sess.paid:
         if not _verify_stripe_payment(sess):
@@ -255,10 +260,6 @@ def run(session_id: str) -> dict:
         except Exception as exc:
             logger.error("Email delivery failed: %s", exc)
 
-    # Mark completed
-    sess.completed = True
-    _sessions.set(session_id, sess)
-
     findings_out = [
         {
             "type": f.type.value,
@@ -272,7 +273,7 @@ def run(session_id: str) -> dict:
         for f in sorted(result.findings, key=lambda x: x.estimated_amount or 0, reverse=True)
     ]
 
-    return {
+    response = {
         "status": "done",
         "session_id": session_id,
         "total_detected": round(result.estimated_savings, 2),
@@ -284,6 +285,13 @@ def run(session_id: str) -> dict:
         "report_available": bool(report_path),
         "download_url": f"/download/{session_id}" if report_path else None,
     }
+
+    # Cache and mark completed
+    sess.completed = True
+    sess.result_json = json.dumps(response)
+    _sessions.set(session_id, sess)
+
+    return response
 
 
 # ── Download ──────────────────────────────────────────────────────────────────
