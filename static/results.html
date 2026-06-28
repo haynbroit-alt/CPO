@@ -201,25 +201,39 @@
       </div>`;
   }
 
+  async function pollRun(maxMs = 120000, intervalMs = 2500) {
+    const deadline = Date.now() + maxMs;
+    while (Date.now() < deadline) {
+      const res = await fetch(`/run/${SESSION_ID}`);
+      if (res.status === 402) return { _status: 402 };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { _status: res.status, _detail: body.detail };
+      }
+      const data = await res.json();
+      if (data.status !== 'processing') return data;
+      await new Promise(r => setTimeout(r, intervalMs));
+    }
+    return { _status: 'timeout' };
+  }
+
   async function runAudit() {
     try {
-      const res = await fetch(`/run/${SESSION_ID}`);
+      const data = await pollRun();
 
-      if (res.status === 402) {
+      if (data._status === 402) {
         document.getElementById('error-text').textContent =
           'Payment not confirmed yet. Please complete checkout and return to this page.';
         show('state-error');
         return;
       }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      if (data._status) {
         document.getElementById('error-text').textContent =
-          data.detail || `Error ${res.status} — please try again.`;
+          data._detail ||
+          (data._status === 'timeout' ? 'Audit is taking longer than expected — refresh to check.' : `Error ${data._status}`);
         show('state-error');
         return;
       }
-
-      const data = await res.json();
 
       // Summary
       document.getElementById('header-sub').textContent = 'Your audit is complete.';

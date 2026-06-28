@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -57,11 +57,19 @@ class AuditSession(BaseModel):
     paid: bool = False
     stripe_session_id: str = ""
     created_at: str = ""
+    processing: bool = False   # background task is running
     completed: bool = False
-    result_json: str = ""  # cached run result (JSON) — avoids re-running detection
+    result_json: str = ""      # cached run result — avoids re-running detection
+
+
+class ProcessedEvent(BaseModel):
+    """Idempotency record for Stripe webhook events."""
+    event_id: str
+    processed_at: str
 
 
 _sessions: SqliteStore[AuditSession] = SqliteStore("cashflow_sessions", AuditSession)
+_processed_events: SqliteStore[ProcessedEvent] = SqliteStore("processed_events", ProcessedEvent)
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
@@ -166,11 +174,12 @@ def checkout(session_id: str) -> dict:
 # ── Stripe webhook ─────────────────────────────────────────────────────────────
 
 @app.post("/webhook/stripe")
-async def stripe_webhook(request: Request) -> dict:
+async def stripe_webhook(request: Request, background_tasks: BackgroundTasks) -> dict:
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
+    # 1. Verify signature
     try:
         import stripe
         stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
@@ -180,8 +189,17 @@ async def stripe_webhook(request: Request) -> dict:
             else json.loads(payload)
         )
     except Exception as exc:
+        logger.warning("Webhook signature verification failed: %s", exc)
         raise HTTPException(400, f"Webhook error: {exc}")
 
+    event_id = event.get("id", "")
+
+    # 2. Idempotency — if already processed, ACK immediately
+    if event_id and _processed_events.get(event_id):
+        logger.info("Duplicate webhook event ignored: %s", event_id)
+        return {"status": "ok", "duplicate": True}
+
+    # 3. ACK immediately — Stripe requires < 30s response
     if event.get("type") == "checkout.session.completed":
         obj = event["data"]["object"]
         session_id = obj.get("metadata", {}).get("session_id")
@@ -190,37 +208,41 @@ async def stripe_webhook(request: Request) -> dict:
             if sess and not sess.paid:
                 sess.paid = True
                 _sessions.set(session_id, sess)
-                logger.info("Payment confirmed via webhook: %s", session_id)
+                logger.info("Payment confirmed via webhook: %s (event: %s)", session_id, event_id)
+                # Trigger detection + PDF + email in background
+                background_tasks.add_task(_process_audit, session_id)
+
+    # 4. Record event as processed
+    if event_id:
+        _processed_events.set(event_id, ProcessedEvent(
+            event_id=event_id,
+            processed_at=datetime.now(tz=timezone.utc).isoformat(),
+        ))
 
     return {"status": "ok"}
 
 
-# ── Run audit ─────────────────────────────────────────────────────────────────
+# ── Background audit processing ────────────────────────────────────────────────
 
-@app.get("/run/{session_id}")
-def run(session_id: str) -> dict:
+def _process_audit(session_id: str) -> None:
+    """Run detection + PDF + email for a paid session. Safe to call multiple times."""
     sess = _sessions.get(session_id)
-    if not sess:
-        raise HTTPException(404, "Session not found")
+    if not sess or not sess.paid or sess.completed:
+        return
 
-    # Return cached result if already computed
-    if sess.completed and sess.result_json:
-        return json.loads(sess.result_json)
+    if sess.processing:
+        logger.info("Audit already processing: %s", session_id)
+        return
 
-    # Verify payment
-    if not sess.paid:
-        if not _verify_stripe_payment(sess):
-            raise HTTPException(402, "Payment required")
-        sess.paid = True
-        _sessions.set(session_id, sess)
+    sess.processing = True
+    _sessions.set(session_id, sess)
 
-    # Decode CSV
     try:
         csv_bytes = base64.b64decode(sess.csv_b64)
     except Exception:
-        raise HTTPException(400, "Invalid session data")
+        logger.error("Invalid base64 data for session %s", session_id)
+        return
 
-    # Run detection
     suffix = ".json" if sess.filename.lower().endswith(".json") else ".csv"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
         f.write(csv_bytes)
@@ -230,11 +252,10 @@ def run(session_id: str) -> dict:
         result = run_file(tmp_path)
     except Exception as exc:
         logger.error("Detection error for session %s: %s", session_id, exc)
-        raise HTTPException(422, f"Could not process file: {exc}")
+        return
     finally:
         os.unlink(tmp_path)
 
-    # Generate CPO (SHA-256 fingerprint of findings)
     cpo_payload = json.dumps(
         [{"type": f.type.value, "amount": f.estimated_amount, "confidence": f.confidence}
          for f in result.findings],
@@ -242,23 +263,19 @@ def run(session_id: str) -> dict:
     ).encode()
     cpo = hashlib.sha256(cpo_payload).hexdigest()
 
-    # Generate PDF
     report_path = ""
     try:
         from sios.cashflow.pdf import create_report
         report_path = create_report(result, cpo, session_id, str(_REPORTS_DIR))
-    except ImportError:
-        logger.warning("fpdf2 not installed — PDF skipped. Run: pip install fpdf2")
     except Exception as exc:
-        logger.error("PDF generation failed: %s", exc)
+        logger.error("PDF generation failed for session %s: %s", session_id, exc)
 
-    # Send email
     if sess.email and report_path:
         try:
             from sios.cashflow.email_sender import send_report
             send_report(sess.email, report_path, result.estimated_savings, result.currency)
         except Exception as exc:
-            logger.error("Email delivery failed: %s", exc)
+            logger.error("Email delivery failed for session %s: %s", session_id, exc)
 
     findings_out = [
         {
@@ -286,12 +303,70 @@ def run(session_id: str) -> dict:
         "download_url": f"/download/{session_id}" if report_path else None,
     }
 
-    # Cache and mark completed
-    sess.completed = True
-    sess.result_json = json.dumps(response)
-    _sessions.set(session_id, sess)
+    sess = _sessions.get(session_id)  # re-fetch (may have changed)
+    if sess:
+        sess.processing = False
+        sess.completed = True
+        sess.result_json = json.dumps(response)
+        _sessions.set(session_id, sess)
 
-    return response
+    logger.info("Audit complete: %s — %s findings, %.0f %s",
+                session_id, len(result.findings), result.estimated_savings, result.currency)
+
+
+# ── Run audit ─────────────────────────────────────────────────────────────────
+
+@app.get("/run/{session_id}")
+def run(session_id: str, background_tasks: BackgroundTasks) -> dict:
+    sess = _sessions.get(session_id)
+    if not sess:
+        raise HTTPException(404, "Session not found")
+
+    # Return cached result if background task already completed
+    if sess.completed and sess.result_json:
+        return json.loads(sess.result_json)
+
+    # Background task triggered by webhook is still running
+    if sess.processing:
+        return {"status": "processing", "session_id": session_id}
+
+    # Verify payment (webhook may not have fired yet — check Stripe API directly)
+    if not sess.paid:
+        if not _verify_stripe_payment(sess):
+            raise HTTPException(402, "Payment required")
+        sess.paid = True
+        _sessions.set(session_id, sess)
+
+    # Webhook didn't trigger yet — run synchronously as fallback
+    background_tasks.add_task(_process_audit, session_id)
+    return {"status": "processing", "session_id": session_id}
+
+
+# ── Invoice status (recovery endpoint) ────────────────────────────────────────
+
+@app.get("/invoice/status")
+def invoice_status(session_id: str) -> dict:
+    """Recovery endpoint — returns audit status and download link without re-running."""
+    sess = _sessions.get(session_id)
+    if not sess:
+        raise HTTPException(404, "Session not found")
+    if not sess.paid:
+        return {"status": "unpaid", "session_id": session_id}
+    if sess.processing:
+        return {"status": "processing", "session_id": session_id}
+    if sess.completed and sess.result_json:
+        data = json.loads(sess.result_json)
+        return {
+            "status": "completed",
+            "session_id": session_id,
+            "findings_count": data.get("findings_count", 0),
+            "total_detected": data.get("total_detected", 0),
+            "currency": data.get("currency", "EUR"),
+            "cpo": data.get("cpo", ""),
+            "report_available": data.get("report_available", False),
+            "download_url": data.get("download_url"),
+        }
+    return {"status": "paid_pending", "session_id": session_id}
 
 
 # ── Download ──────────────────────────────────────────────────────────────────
