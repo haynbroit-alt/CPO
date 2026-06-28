@@ -1,0 +1,721 @@
+%% AXIOM v1.0 — Autonomous Value Protocol
+%% White Paper — Draft
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumerate}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\geometry{margin=1in}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\PVC}{\mathrm{PVC}}
+\newcommand{\PVCS}{\mathrm{PVCS}}
+\newcommand{\NVC}{\mathrm{NVC}}
+\newcommand{\PVE}{\mathrm{PVE}}
+\newcommand{\AS}{\mathrm{AS}}
+\newcommand{\Rid}{R_{\mathrm{id}}}
+\newcommand{\Rstrat}{R_{\mathrm{strat}}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+
+\title{%
+  \textbf{AXIOM v1.0}\\[0.5em]
+  \large A Formal Protocol for Capital Allocation\\
+  via Proof of Value Creation
+}
+
+\author{%
+  Autonomous Value Protocol Specification\\[0.3em]
+  \small \texttt{https://github.com/haynbroit-alt/cpo}
+}
+
+\date{2026 — Draft v0.1}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present AXIOM, a decentralised economic protocol for allocating capital to
+autonomous agents based on verifiable value creation rather than revenue or
+speculation. The central primitive is the \emph{Proof of Value Creation} (PVC),
+a formally defined, cryptographically attested record of net value produced by
+an agent within a bounded, auditable execution context. Capital allocation
+follows an \emph{AxiomScore} — a monotone, risk-adjusted function of
+accumulated PVC, identity reputation, and strategy reputation. We prove that
+the slashing mechanism makes fraud economically irrational under mild
+assumptions, and that the protocol converges to a stable allocation fixed point
+when agent populations satisfy a diversity condition. AXIOM is designed to
+compose with execution-layer verification protocols (such as Proof
+Protocol / CPO~\cite{cpp2025}) via shared proof formats, without structural
+dependency.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------------------------
+\section{Introduction}
+% ---------------------------------------------------------------------------
+
+Autonomous agents — software systems that execute economic strategies without
+continuous human oversight — are increasingly capable of generating value
+through trading, arbitrage, digital commerce, and computation. Yet capital
+allocation to such agents remains primitive: investors rely on audited backtests,
+historical returns, or reputational proxies. These signals are expensive to
+verify, easy to manipulate, and structurally unable to distinguish genuine value
+creation from variance extraction or fraud.
+
+AXIOM addresses a single core question:
+
+\begin{quote}
+\emph{How should a decentralised protocol allocate capital to agents whose
+outputs are measurable, based solely on verifiable proof that value was
+actually created?}
+\end{quote}
+
+The answer requires three separable components:
+
+\begin{enumerate}[(1)]
+  \item A \textbf{definition} of value creation that is objective, computable,
+        and resistant to gaming.
+  \item A \textbf{verification mechanism} that confirms claimed value creation
+        without requiring trust in any single party.
+  \item An \textbf{allocation function} that maps verified value creation to
+        capital, with incentive properties that make fraud irrational.
+\end{enumerate}
+
+This document provides formal treatments of all three.
+
+\subsection{Relationship with Proof Protocol / CPO}
+
+AXIOM is independent of any specific execution-layer technology but is designed
+to compose with Proof Protocol~\cite{cpp2025}. The distinction is precise:
+
+\begin{itemize}
+  \item \textbf{Proof Protocol / CPO}: proves that a computation was executed
+        correctly, deterministically, in a bounded environment (what happened).
+  \item \textbf{AXIOM}: decides how to reward and finance agents based on the
+        economic value of those executions (what it was worth).
+\end{itemize}
+
+A CPO serves as the \emph{proof} component of a PVC: it attests that the code
+producing the reported output genuinely ran in a sandboxed environment and
+produced the claimed result. AXIOM treats CPOs as an opaque, verifiable
+attestation primitive.
+
+% ---------------------------------------------------------------------------
+\section{Formal Model}
+% ---------------------------------------------------------------------------
+
+\subsection{Agents}
+
+\begin{definition}[Agent]
+An agent $a$ is a tuple
+\[
+  a = \bigl(\mathrm{id}_a,\; \mathrm{stake}_a,\; \mathcal{H}_a,\;
+             \Rid(a),\; \Rstrat(a),\; s_a\bigr)
+\]
+where:
+\begin{itemize}
+  \item $\mathrm{id}_a \in \{0,1\}^{256}$: stable public identity (e.g.\ public key hash);
+  \item $\mathrm{stake}_a \in \R_{\ge 0}$: capital deposited as collateral;
+  \item $\mathcal{H}_a$: ordered history of finalised PVCs attributed to $a$;
+  \item $\Rid(a,t) \in [0,1]$: identity reputation at time $t$;
+  \item $\Rstrat(a,t) \in [0,1]$: strategy reputation at time $t$;
+  \item $s_a \in \mathcal{S}$: current strategy class.
+\end{itemize}
+\end{definition}
+
+Let $\mathcal{S} = \{\text{trading, arbitrage, optimisation, marketing,
+automation, digital-commerce}\}$ be the finite set of recognised strategy
+classes.
+
+\subsection{Proof of Value Creation}
+
+\begin{definition}[PVC]
+A \emph{Proof of Value Creation} for agent $a$ over interval $[t_0, t_1]$ is a
+tuple
+\[
+  \PVC = \bigl(\mathrm{id}_a,\; s_a,\; V_0,\; V_1,\; C,\; \tau,\; \sigma,\;
+               \pi\bigr)
+\]
+where:
+\begin{itemize}
+  \item $V_0, V_1 \in \R_{\ge 0}$: observable value at start and end of the
+        period, measured in a common numeraire;
+  \item $C \in \R_{>0}$: capital allocated by the protocol during $[t_0, t_1]$;
+  \item $\tau = t_1 - t_0 > 0$: duration;
+  \item $\sigma \in \R_{>0}$: realised volatility of the agent's value process
+        over $[t_0, t_1]$;
+  \item $\pi$: cryptographic execution proof (e.g.\ a CPO) attesting that the
+        reported $(V_0, V_1, \sigma)$ derive from a verifiably executed strategy.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Net Value Created]
+\label{def:nvc}
+Let $r_f \ge 0$ be the risk-free rate. The \emph{net value created} by a PVC is
+\[
+  \NVC(\PVC) \;=\; (V_1 - V_0) \;-\; C \cdot r_f \cdot \tau.
+\]
+\end{definition}
+
+This definition charges the agent for the opportunity cost of the capital
+allocated. An agent that merely matches the risk-free return produces
+$\NVC = 0$.
+
+\begin{definition}[PVC Score]
+\label{def:pvcs}
+The \emph{PVC Score} (risk-adjusted) is
+\[
+  \PVCS(\PVC)
+  \;=\;
+  \frac{\NVC(\PVC)}{C \cdot \sigma \cdot \sqrt{\tau}}.
+\]
+\end{definition}
+
+The denominator $C \cdot \sigma \cdot \sqrt{\tau}$ is proportional to the
+standard deviation of a position of size $C$ with volatility $\sigma$ over
+$\sqrt{\tau}$ time units — an Itô-style risk normalisation. $\PVCS$ is
+dimensionless and comparable across agents regardless of strategy size or
+duration.
+
+\begin{remark}
+$\PVCS$ is structurally identical to a Sharpe ratio with the risk-free rate
+subtracted, scaled by capital. A positive $\PVCS$ indicates that the agent
+created value beyond the opportunity cost \emph{and} after adjusting for risk.
+\end{remark}
+
+\subsection{Protocol Value Efficiency}
+
+\begin{definition}[Protocol Value Efficiency]
+At time $T$, the \emph{Protocol Value Efficiency} is
+\[
+  \PVE(T)
+  \;=\;
+  \frac{\displaystyle\sum_{a \in \mathcal{A}} \sum_{\PVC_i \in \mathcal{H}_a} \NVC(\PVC_i)}
+       {\displaystyle\sum_{a \in \mathcal{A}} \int_0^T C_a(t)\,\mathrm{d}t}.
+\]
+\end{definition}
+
+$\PVE > 0$ is the necessary condition for the protocol to be economically
+self-sustaining. The long-term goal of AXIOM governance is to keep $\PVE$
+strictly positive.
+
+% ---------------------------------------------------------------------------
+\section{Reputation}
+% ---------------------------------------------------------------------------
+
+\subsection{Identity Reputation}
+
+Identity reputation $\Rid$ measures the trustworthiness of an agent identity
+over time, independently of strategy performance.
+
+\begin{definition}[Identity Reputation Update]
+\label{def:rid}
+Let $b_t \in [0,1]$ be a behavior score at time $t$ (1 = fully honest,
+0 = confirmed fraud). Then
+\[
+  \Rid(a, t+1) \;=\; (1 - \lambda_{\mathrm{id}}) \cdot \Rid(a, t)
+                    \;+\; \lambda_{\mathrm{id}} \cdot b_t
+\]
+with $\lambda_{\mathrm{id}} \in (0,1)$ a protocol parameter controlling the
+update rate.
+\end{definition}
+
+Properties of $\Rid$:
+\begin{itemize}
+  \item \textit{Monotone recovery}: sustained honest behavior drives $\Rid \to 1$.
+  \item \textit{Irreversibility of fraud}: a single $b_t = 0$ event pulls $\Rid$
+        downward regardless of prior history.
+  \item \textit{Sybil penalty}: a freshly created identity starts at $\Rid = 0$
+        and must accumulate history before receiving significant allocation.
+\end{itemize}
+
+\subsection{Strategy Reputation}
+
+Strategy reputation $\Rstrat$ measures performance within a specific strategy
+class.
+
+\begin{definition}[Strategy Reputation Update]
+\label{def:rstrat}
+Upon finalisation of $\PVC_i$:
+\[
+  \Rstrat(a, t+1) \;=\; (1 - \lambda_s) \cdot \Rstrat(a, t)
+                       \;+\; \lambda_s \cdot \Phi\bigl(\PVCS(\PVC_i)\bigr)
+\]
+where $\Phi : \R \to [0,1]$ is a sigmoid squashing function and
+$\lambda_s \in (0,1)$ is the strategy update rate.
+\end{definition}
+
+\subsection{Strategy Transition and Reputation Transfer}
+
+When agent $a$ switches from strategy class $s$ to $s'$, its accumulated
+strategy reputation transfers partially according to a \emph{proximity matrix}.
+
+\begin{definition}[Strategy Proximity Matrix]
+$M \in [0,1]^{|\mathcal{S}| \times |\mathcal{S}|}$ is a symmetric matrix where
+$M[s, s']$ reflects the structural similarity between strategy classes $s$ and
+$s'$. Diagonal entries satisfy $M[s,s] = 1$.
+\end{definition}
+
+\begin{definition}[Reputation Transfer]
+Upon strategy change from $s$ to $s'$:
+\[
+  \Rstrat'(a) \;=\; \Rstrat(a) \cdot M[s, s'].
+\]
+\end{definition}
+
+An agent switching between structurally similar strategies (e.g.\ trading
+$\to$ arbitrage) retains most reputation. Switching to a structurally distant
+class (e.g.\ trading $\to$ digital-commerce) forfeits most accumulated strategy
+reputation, preventing reputation laundering.
+
+% ---------------------------------------------------------------------------
+\section{Capital Allocation}
+% ---------------------------------------------------------------------------
+
+\subsection{AxiomScore}
+
+\begin{definition}[AxiomScore]
+\label{def:axiom-score}
+The AxiomScore of agent $a$ at time $t$ is
+\[
+  \AS(a, t)
+  \;=\;
+  \Biggl[\sum_{i} \PVCS(\PVC_i) \cdot e^{-\kappa(t - t_i)}\Biggr]^{\!\alpha}
+  \cdot
+  \Rid(a, t)^{\beta}
+  \cdot
+  \Rstrat(a, t)^{\gamma}
+  \cdot
+  \bigl(1 + \mathrm{VaR}_{\delta}(a, t)\bigr)^{-\delta}
+\]
+where:
+\begin{itemize}
+  \item $e^{-\kappa(t - t_i)}$: exponential decay with half-life $\ln 2 / \kappa$,
+        so that recent PVCs carry more weight;
+  \item $\alpha, \beta, \gamma, \delta > 0$: protocol parameters;
+  \item $\mathrm{VaR}_{\delta}(a,t)$: the $\delta$-quantile Value-at-Risk of
+        agent $a$'s strategy, estimated from recent history.
+\end{itemize}
+\end{definition}
+
+The four factors encode:
+\begin{enumerate}[(1)]
+  \item \textit{Performance}: recency-weighted sum of risk-adjusted PVC scores;
+  \item \textit{Identity trust}: long-term honesty signal;
+  \item \textit{Strategy mastery}: competence within the current strategy class;
+  \item \textit{Tail-risk penalty}: penalises high-variance strategies that
+        impose systemic risk on the pool.
+\end{enumerate}
+
+\subsection{Allocation Function}
+
+\begin{definition}[Capital Allocation]
+\label{def:allocation}
+The capital allocated to agent $a$ at rebalancing epoch $t$ is
+\[
+  C_a(t)
+  \;=\;
+  C_{\mathrm{total}}(t)
+  \cdot
+  \frac{\AS(a, t)^{\eta}}{\displaystyle\sum_{b \in \mathcal{A}} \AS(b, t)^{\eta}}
+\]
+where $\eta \ge 1$ is a concentration parameter. Higher $\eta$ produces a
+winner-takes-more distribution; $\eta = 1$ is proportional.
+\end{definition}
+
+\begin{proposition}[Progressive allocation]
+For any agent $a$ with $\AS(a, 0) = 0$, the allocation $C_a(t) \to 0$ as
+all other agents maintain positive scores. New agents receive near-zero
+allocation until they accumulate verified PVC history.
+\end{proposition}
+
+\begin{proof}
+Direct from Definition~\ref{def:allocation}: if $\AS(a,0) = 0$ then the
+numerator is 0 while the denominator is strictly positive.
+\end{proof}
+
+\subsection{Systemic Risk Constraint}
+
+To limit correlated drawdown across the pool, the protocol imposes:
+
+\begin{definition}[Correlation Constraint]
+Let $\rho_{ab}$ be the pairwise return correlation between agents $a$ and $b$.
+The portfolio concentration constraint requires
+\[
+  \sum_{a,b:\,\rho_{ab} > \rho^*} C_a(t) \cdot C_b(t)
+  \;\le\;
+  \theta \cdot C_{\mathrm{total}}(t)^2
+\]
+for parameters $\rho^* \in (0,1)$ and $\theta \in (0,1)$. Agents violating this
+constraint have their allocation capped and the surplus redistributed.
+\end{definition}
+
+% ---------------------------------------------------------------------------
+\section{Validation and Slashing}
+% ---------------------------------------------------------------------------
+
+\subsection{PVC Lifecycle}
+
+Each submitted PVC traverses the following state machine:
+\[
+  \text{Submitted}
+  \;\to\;
+  \text{Primary Validated}
+  \;\to\;
+  \text{Challenge Window}
+  \;\to\;
+  \begin{cases}
+    \text{Finalised} & \text{(no valid challenge)} \\
+    \text{Audited}   & \text{(challenge raised)}
+  \end{cases}
+  \;\to\;
+  \begin{cases}
+    \text{Accepted} \\
+    \text{Rejected}
+  \end{cases}
+\]
+
+Validators stake capital before participation. Any party may raise a challenge
+during the Challenge Window by depositing a challenge bond. An audit panel
+(sampled randomly from staked auditors) adjudicates disputes.
+
+\subsection{Slashing Rules}
+
+\begin{definition}[Slashing]
+\begin{itemize}
+  \item \textbf{Agent fraud} (submitting a false PVC): slash $\mathrm{stake}_a$,
+        set $b_t = 0$, permanently flag $\mathrm{id}_a$.
+  \item \textbf{Validator fault} (approving a false PVC): slash validator stake.
+  \item \textbf{Auditor reward}: honest auditors who correctly identify fraud
+        receive a share of slashed collateral.
+  \item \textbf{Frivolous challenge}: challenger loses bond if the PVC is
+        upheld after audit.
+\end{itemize}
+\end{definition}
+
+\subsection{Economic Security Theorem}
+
+\begin{theorem}[Fraud Irrationality]
+\label{thm:fraud}
+Let $p \in (0,1)$ be the probability that a fraudulent PVC is detected during
+the Challenge Window or audit. Let $G > 0$ be the expected gain from a
+fraudulent PVC (capital received before detection). Then fraud is strictly
+irrational if and only if
+\[
+  \mathrm{stake}_a \;>\; \frac{G}{p}.
+\]
+\end{theorem}
+
+\begin{proof}
+The expected utility of attempting fraud for a risk-neutral agent is
+\[
+  \E[\text{fraud}]
+  \;=\;
+  (1-p) \cdot G \;-\; p \cdot \mathrm{stake}_a.
+\]
+Setting $\E[\text{fraud}] < 0$ and solving:
+\[
+  (1-p) G < p \cdot \mathrm{stake}_a
+  \;\iff\;
+  G - pG < p \cdot \mathrm{stake}_a
+  \;\iff\;
+  G < p(\mathrm{stake}_a + G)
+\]
+which simplifies to $\mathrm{stake}_a > G/p - G = G(1-p)/p$.
+For $p > 0.5$ the right-hand side is less than $G$, so a stake matching
+expected gain suffices. For $p \to 1$ the required stake approaches 0;
+for $p \to 0$ the required stake diverges (the protocol relies on detection).
+The protocol sets minimum stake $S_{\min}$ such that
+$S_{\min} \ge G_{\max}(1-p)/p$ where $G_{\max}$ is the maximum extractable
+gain per PVC epoch, making fraud irrational for all rational agents.
+\end{proof}
+
+\begin{corollary}[Validator Collusion Cost]
+For $k$ validators to collude and approve a fraudulent PVC, the expected loss
+per validator is $p_k \cdot \mathrm{stake}_v$ where $p_k$ is the per-validator
+detection probability given $k$-collusion. Since auditors are sampled
+independently, $p_k$ decreases slowly with $k$ (sublinear), meaning the
+marginal cost of recruiting an additional colluder remains high. Collusion of
+$k > \lfloor |\mathcal{V}| / 3 \rfloor$ validators is required to override
+audit, giving Byzantine fault tolerance analogous to BFT consensus.
+\end{corollary}
+
+% ---------------------------------------------------------------------------
+\section{Attack Analysis}
+% ---------------------------------------------------------------------------
+
+\subsection{Sybil Attacks}
+
+An adversary creates $n$ fresh identities to dilute the pool or acquire
+disproportionate allocation.
+
+\textbf{Defense}: Each fresh identity starts with $\Rid = 0$ and $\Rstrat = 0$,
+yielding $\AS = 0$ (from Definition~\ref{def:axiom-score}). Allocation is
+therefore zero until PVC history is accumulated. The cost of building
+reputation on $n$ identities is $n$ times the cost of building it on one,
+making Sybil attacks linearly expensive.
+
+\subsection{Fake PVC Attacks}
+
+An agent fabricates $(V_0, V_1, \sigma)$ without genuine execution.
+
+\textbf{Defense}: The execution proof $\pi$ (e.g.\ a CPO from Proof Protocol)
+is a non-forgeable cryptographic attestation that the reported values derive
+from a verifiably executed computation. A fake PVC lacking a valid $\pi$ is
+rejected at primary validation. A PVC with a forged $\pi$ requires breaking
+the underlying signature scheme (Ed25519), which is computationally
+infeasible under standard assumptions.
+
+\subsection{Reputation Laundering}
+
+An agent with high $\Rstrat$ in one class switches to a distant class, exploiting
+accumulated reputation to receive elevated allocation before establishing
+performance.
+
+\textbf{Defense}: Strategy transition multiplies reputation by $M[s, s'] \ll 1$
+for distant classes (Definition~\ref{def:rstrat}). Allocation in the new class
+is therefore initially low, matching the genuinely low demonstrated competence.
+
+\subsection{Oracle Manipulation}
+
+An agent manipulates $V_0$ or $V_1$ measurements at the data-source level.
+
+\textbf{Defense}: PVC values must be derived from on-chain or third-party-attested
+sources enumerated in the protocol registry. The execution proof $\pi$ commits
+to the specific data source used. Disputes over oracle values trigger an audit
+of the source attestation, not merely the computation.
+
+\subsection{Correlation Attack}
+
+An adversary controls many agents with identical strategies, creating concentrated
+systemic risk in the pool while each individual agent appears low-risk.
+
+\textbf{Defense}: The correlation constraint (Section 4.3) explicitly limits
+the aggregate allocation to correlated agent clusters. Agents above the
+threshold have allocation capped regardless of individual AxiomScore.
+
+% ---------------------------------------------------------------------------
+\section{Governance}
+% ---------------------------------------------------------------------------
+
+Governance in AXIOM is deliberately limited to parameter adjustments. The
+immutability boundary is:
+
+\begin{itemize}
+  \item \textbf{Immutable}: PVC history, finalised allocations, agent identity
+        records, slashing events.
+  \item \textbf{Governable}: $\alpha, \beta, \gamma, \delta, \eta, \kappa$
+        (score parameters); $\rho^*, \theta$ (risk constraints); $\lambda_s,
+        \lambda_{\mathrm{id}}$ (reputation update rates); $r_f$ (reference
+        rate); strategy class definitions; minimum stake requirements.
+\end{itemize}
+
+Governance votes are weighted by $\Rid$ of the voter, not raw token stake,
+to prevent governance capture by capital-rich new entrants.
+
+% ---------------------------------------------------------------------------
+\section{MVP Specification}
+% ---------------------------------------------------------------------------
+
+The MVP instantiates AXIOM with the minimal viable parameter set:
+
+\begin{itemize}
+  \item \textbf{Agent class}: crypto trading only ($|\mathcal{S}| = 1$).
+  \item \textbf{PVC proof}: on-chain trade records (DEX transaction hashes),
+        optionally augmented with CPO execution proofs for strategy code.
+  \item \textbf{Validation}: $k = 3$ validators per PVC, majority vote.
+  \item \textbf{Challenge Window}: 48 hours.
+  \item \textbf{Allocation}: single capital pool, daily rebalancing.
+  \item \textbf{Reputation}: $\Rid$ only; $\Rstrat \equiv 1$ (single strategy
+        class, no switching).
+  \item \textbf{Parameters}: $\alpha = 1, \beta = 0.5, \gamma = 0$ (disabled),
+        $\delta = 0.5, \eta = 1$ (proportional), $\kappa = \ln 2 / 30$ (30-day
+        half-life), $r_f = $ annualised reference rate.
+\end{itemize}
+
+The MVP objective is to demonstrate that a capital pool allocated by AxiomScore
+achieves $\PVE > 0$ over a 90-day trial.
+
+% ---------------------------------------------------------------------------
+\section{Theoretical Properties}
+% ---------------------------------------------------------------------------
+
+\begin{theorem}[Allocation Fixed Point]
+\label{thm:fixedpoint}
+Suppose the agent population $\mathcal{A}$ is fixed and all agents maintain
+constant $\PVCS$. Then the allocation sequence $\{C_a(t)\}_{t \ge 0}$ converges
+to a unique fixed point $C^*$ determined by the stationary AxiomScores.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+At stationarity, $\Rid(a,t)$ and $\Rstrat(a,t)$ converge to fixed points
+$\bar{R}_{\mathrm{id}}(a)$ and $\bar{R}_{\mathrm{strat}}(a)$ (geometric
+series limits of the exponential moving average updates in
+Definitions~\ref{def:rid}--\ref{def:rstrat}). The sum
+$\sum_i \PVCS(\PVC_i) e^{-\kappa(t-t_i)}$ also converges to a constant
+under stationary $\PVCS$. Therefore $\AS(a)$ converges, and $C_a^* =
+C_{\mathrm{total}} \cdot \AS(a)^\eta / \sum_b \AS(b)^\eta$ is a well-defined
+fixed point.
+\end{proof}
+
+\begin{theorem}[PVE Positivity under Fraud Irrationality]
+\label{thm:pve}
+If the minimum stake condition of Theorem~\ref{thm:fraud} holds for all agents
+and validators, and at least one agent has strictly positive true $\PVCS$,
+then $\E[\PVE(T)] > 0$ for all $T > 0$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Under fraud irrationality, all submitted PVCs that pass validation have
+$\NVC > 0$ in expectation (negative-NVC submissions are irrational since
+they waste stake without extracting gain). By monotonicity of the allocation
+function, positive-NVC agents receive positive allocation, and the expected
+pool-level NVC is strictly positive. Since denominator $\sum_a \int C_a(t)\,dt$
+is finite, $\E[\PVE(T)] > 0$.
+\end{proof}
+
+% ---------------------------------------------------------------------------
+\section{Relation to Proof Protocol / CPO}
+% ---------------------------------------------------------------------------
+
+Table~\ref{tab:comparison} summarises the complementary roles.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+& \textbf{Proof Protocol / CPO} & \textbf{AXIOM} \\
+\midrule
+Question answered & Was this computation correct? & Was this computation valuable? \\
+Core primitive    & Computational Proof Object (CPO) & Proof of Value Creation (PVC) \\
+Verification      & Deterministic re-execution & Economic audit + slashing \\
+Output            & Signed execution record & Capital allocation \\
+Scope             & Any bounded computation & Agent economic strategies \\
+\bottomrule
+\end{tabular}
+\caption{Layered separation of concerns.}
+\label{tab:comparison}
+\end{table}
+
+A PVC $\pi$ field pointing to a CPO allows any party to verify not only
+that the agent's reported value was produced honestly (AXIOM audit) but also
+that the underlying computation ran in a provably isolated environment
+(Proof Protocol). The two layers are independent: AXIOM can function without
+CPO attestations (relying on on-chain proofs), and Proof Protocol is useful
+without AXIOM (in any verified computation context).
+
+% ---------------------------------------------------------------------------
+\section{Discussion and Future Work}
+% ---------------------------------------------------------------------------
+
+Several important questions remain open:
+
+\paragraph{Value definition for non-financial agents.}
+Definition~\ref{def:nvc} assumes a monetary numeraire. Extending AXIOM to
+agents producing non-monetary value (information, coordination, content) requires
+a generalised value function $V : \text{outcome} \to \R$ that is
+auditable and manipulation-resistant. This is an open research problem
+in mechanism design.
+
+\paragraph{Calibration of $\alpha, \beta, \gamma, \delta$.}
+The AxiomScore exponents determine the relative importance of performance,
+identity, strategy, and risk. Optimal calibration requires empirical data
+from the MVP deployment.
+
+\paragraph{Cross-pool allocation.}
+When multiple AXIOM pools coexist with different risk profiles, inter-pool
+capital flows require a meta-allocation mechanism. We conjecture that a
+hierarchical AxiomScore applying pool-level PVE as an additional factor
+would suffice, but this requires formal treatment.
+
+\paragraph{Dynamic strategy classes.}
+The current model treats $\mathcal{S}$ as fixed. In practice, new strategy
+classes emerge as AI capabilities advance. A governance process for introducing
+new classes with appropriate proximity matrix entries is required.
+
+% ---------------------------------------------------------------------------
+\section{Conclusion}
+% ---------------------------------------------------------------------------
+
+We have presented AXIOM, a formally specified protocol for allocating capital to
+autonomous agents via verifiable proof of value creation. The central
+contributions are:
+
+\begin{enumerate}[(1)]
+  \item A formal definition of the Proof of Value Creation (PVC) as a
+        risk-adjusted, capital-normalised, cryptographically attested record
+        of net economic output.
+  \item The AxiomScore allocation function, which monotonically combines
+        performance, identity reputation, strategy reputation, and tail-risk
+        penalty.
+  \item Proof that the slashing mechanism renders fraud economically irrational
+        under a mild stake condition (Theorem~\ref{thm:fraud}).
+  \item Proof that the allocation converges to a fixed point under stationary
+        agents (Theorem~\ref{thm:fixedpoint}) and that PVE remains positive
+        under the fraud-irrationality regime (Theorem~\ref{thm:pve}).
+  \item An attack analysis covering Sybil, fake PVC, reputation laundering,
+        oracle manipulation, and correlation attacks.
+\end{enumerate}
+
+AXIOM and Proof Protocol form a natural two-layer stack: execution integrity
+below, economic value allocation above. Together they constitute an
+infrastructure for a world where autonomous agents are funded, evaluated, and
+rewarded purely on the basis of verifiable, risk-adjusted value creation.
+
+% ---------------------------------------------------------------------------
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+
+\bibitem{cpp2025}
+Proof Protocol Authors.
+\emph{A Replay-Based Verifiable Execution Layer for Multi-Paradigm AI
+Computation}.
+Technical Report, 2025.
+\texttt{https://github.com/haynbroit-alt/cpo/blob/main/paper/proof\_protocol.tex}
+
+\bibitem{nakamoto2008}
+S. Nakamoto.
+\emph{Bitcoin: A Peer-to-Peer Electronic Cash System}.
+2008.
+
+\bibitem{wood2014}
+G. Wood.
+\emph{Ethereum: A Secure Decentralised Generalised Transaction Ledger}.
+Ethereum Project Yellow Paper, 2014.
+
+\bibitem{roughgarden2021}
+T. Roughgarden.
+\emph{Transaction Fee Mechanism Design for the Ethereum Blockchain}.
+EC '21, 2021.
+
+\end{thebibliography}
+
+\end{document}
