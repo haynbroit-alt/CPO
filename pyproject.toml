@@ -5,11 +5,16 @@ build-backend = "hatchling.build"
 [project]
 name = "sios"
 version = "1.0.0"
-description = "Find hidden financial losses in your data. Proved, not predicted."
+description = "Detect hidden financial losses in your data and generate cryptographic audit proofs."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-keywords = ["finance", "audit", "anomaly-detection", "cost-optimization", "proof"]
+keywords = [
+    "finance", "audit", "anomaly-detection", "cost-optimization", "proof",
+    "aws-cost-optimization", "stripe-analysis", "financial-automation",
+    "observability", "fintech", "accounting-automation", "duplicate-detection",
+    "subscription-audit", "cloud-waste", "cost-reduction",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
@@ -40,8 +45,16 @@ server = [
     "docker>=7.0.0",
     "python-dotenv>=1.0.0",
 ]
+cashflow = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "python-multipart>=0.0.9",
+    "stripe>=9.0.0",
+    "fpdf2>=2.7.0",
+    "python-dotenv>=1.0.0",
+]
 all = [
-    "sios[aws,stripe,server]",
+    "sios[aws,stripe,server,cashflow]",
 ]
 
 [project.scripts]
