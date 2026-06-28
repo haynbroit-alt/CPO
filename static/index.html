@@ -308,6 +308,19 @@
     <div class="msg info"  id="info-msg"></div>
   </div>
 
+  <!-- ── Demo CTA ─────────────────────────────────────────── -->
+  <div style="text-align:center;margin:0 0 32px">
+    <a href="/demo"
+       style="display:inline-block;padding:10px 24px;border:2px solid #1a1a1a;
+              border-radius:8px;font-size:0.9rem;font-weight:600;
+              text-decoration:none;color:#1a1a1a;transition:background .15s"
+       onmouseover="this.style.background='#f5f5f5'"
+       onmouseout="this.style.background='transparent'">
+      Try free demo — no payment needed →
+    </a>
+    <p style="margin-top:8px;font-size:0.82rem;color:#aaa" id="stats-line"></p>
+  </div>
+
   <!-- ── How it works ─────────────────────────────────────── -->
   <section class="section">
     <h2>How it works</h2>
@@ -440,6 +453,15 @@
 
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  // Load public stats
+  fetch('/stats').then(r => r.json()).then(d => {
+    const line = document.getElementById('stats-line');
+    if (line && d.total_audits > 0) {
+      const fmt = n => new Intl.NumberFormat('en-EU', {style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
+      line.textContent = `${d.total_audits} audit${d.total_audits !== 1 ? 's' : ''} completed · ${fmt(d.total_detected_eur)} detected so far`;
+    }
+  }).catch(() => {});
+
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');

@@ -155,6 +155,9 @@
       <a id="download-btn" class="btn btn-primary" href="#" style="display:none">
         Download PDF Report →
       </a>
+      <a id="verify-btn" class="btn btn-outline" href="#" style="display:none">
+        Share proof →
+      </a>
       <a href="/" class="btn btn-outline">Run another audit</a>
     </div>
   </div>
@@ -255,6 +258,13 @@
         const btn = document.getElementById('download-btn');
         btn.href = data.download_url;
         btn.style.display = 'block';
+      }
+
+      // Verify / share proof button
+      if (data.verify_url) {
+        const vbtn = document.getElementById('verify-btn');
+        vbtn.href = data.verify_url;
+        vbtn.style.display = 'block';
       }
 
       show('state-results');
