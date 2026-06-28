@@ -90,26 +90,34 @@ def test_checkout_unknown_session(client):
 # ── Run (full detection pipeline) ────────────────────────────────────────────
 
 def _full_flow(client) -> tuple[str, dict]:
-    """Upload → checkout → run. Returns (session_id, run_response)."""
+    """Upload → checkout → run (polls until done). Returns (session_id, result_dict)."""
     up = client.post(
         "/upload",
         files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
         data={"email": "user@example.com"},
     )
     sid = up.json()["session_id"]
-
     client.post(f"/checkout/{sid}")          # dev mode: marks paid
 
-    r = client.get(f"/run/{sid}")
-    assert r.status_code == 200
-    return sid, r.json()
+    # Poll until background task completes (or 10s timeout)
+    import time
+    deadline = time.monotonic() + 10
+    body = {}
+    while time.monotonic() < deadline:
+        r = client.get(f"/run/{sid}")
+        assert r.status_code == 200
+        body = r.json()
+        if body.get("status") != "processing":
+            break
+        time.sleep(0.1)
+    return sid, body
 
 
 def test_run_returns_findings(client):
     _, body = _full_flow(client)
     assert body["status"] == "done"
     assert body["transactions_analyzed"] > 0
-    assert body["findings_count"] >= 0          # may be 0 on tiny dataset
+    assert body["findings_count"] >= 0
     assert isinstance(body["total_detected"], float)
     assert "cpo" in body
     assert len(body["cpo"]) == 64               # SHA-256 hex
@@ -117,13 +125,11 @@ def test_run_returns_findings(client):
 
 def test_run_detects_duplicate_and_subscription(client):
     _, body = _full_flow(client)
-    types = {f["type"] for f in body["findings"]}
-    # The sample CSV contains a Slack recurring charge and an AWS dev-env pattern
     assert len(body["findings"]) >= 1
 
 
 def test_run_is_idempotent(client):
-    """Calling /run twice returns the same result from cache."""
+    """Calling /run twice returns the same CPO from cache."""
     up = client.post(
         "/upload",
         files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
@@ -131,7 +137,15 @@ def test_run_is_idempotent(client):
     sid = up.json()["session_id"]
     client.post(f"/checkout/{sid}")
 
-    r1 = client.get(f"/run/{sid}")
+    # Wait for completion
+    import time
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        r1 = client.get(f"/run/{sid}")
+        if r1.json().get("status") != "processing":
+            break
+        time.sleep(0.1)
+
     r2 = client.get(f"/run/{sid}")
     assert r1.json()["cpo"] == r2.json()["cpo"]
 
@@ -143,9 +157,31 @@ def test_run_requires_payment(client):
         files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
     )
     sid = up.json()["session_id"]
-    # No checkout call
     r = client.get(f"/run/{sid}")
     assert r.status_code == 402
+
+
+# ── Invoice status (recovery) ─────────────────────────────────────────────────
+
+def test_invoice_status_unpaid(client):
+    up = client.post(
+        "/upload",
+        files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
+    )
+    sid = up.json()["session_id"]
+    r = client.get(f"/invoice/status?session_id={sid}")
+    assert r.status_code == 200
+    assert r.json()["status"] == "unpaid"
+
+
+def test_invoice_status_completed(client):
+    sid, _ = _full_flow(client)
+    r = client.get(f"/invoice/status?session_id={sid}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "completed"
+    assert "cpo" in body
+    assert "findings_count" in body
 
 
 # ── Download ──────────────────────────────────────────────────────────────────
