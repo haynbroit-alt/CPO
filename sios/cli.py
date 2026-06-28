@@ -192,6 +192,146 @@ def export(
         typer.echo(f"Exported {len(data['findings'])} findings to {out}")
 
 
+@app.command()
+def aws(
+    days: int = typer.Option(90, "--days", "-d", help="Look-back window in days"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="AWS profile (~/.aws/credentials)"),
+    region: str = typer.Option("us-east-1", "--region", "-r", help="AWS region"),
+    save: Optional[Path] = typer.Option(None, "--save", "-s", help="Save raw transactions to CSV"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Save findings to JSON file"),
+) -> None:
+    """Pull AWS Cost Explorer data and detect cloud waste + anomalies."""
+    try:
+        from sios.connectors.aws import AWSConnector
+    except ImportError:
+        typer.echo("AWS connector requires boto3. Run: pip install sios[aws]", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"\nConnecting to AWS Cost Explorer (last {days} days) ...", err=True)
+    try:
+        connector = AWSConnector(profile=profile, region=region)
+        transactions = connector.fetch(days=days)
+    except Exception as exc:
+        typer.echo(f"AWS error: {exc}", err=True)
+        raise typer.Exit(1)
+
+    if not transactions:
+        typer.echo("No cost data found.")
+        raise typer.Exit(0)
+
+    typer.echo(f"  {len(transactions)} cost records fetched", err=True)
+
+    if save:
+        _save_transactions_csv(transactions, save)
+
+    from sios.value_engine.engine import ValueEngine
+    findings = ValueEngine().run(transactions)
+    _print_findings(findings, source="AWS Cost Explorer")
+
+    if output:
+        from sios.pipeline import AuditResult
+        result = AuditResult(
+            findings=findings,
+            estimated_savings=sum(f.estimated_amount for f in findings if f.estimated_amount),
+            currency=findings[0].currency if findings else "USD",
+            dataset_rows=len(transactions),
+        )
+        Path(output).write_text(json.dumps(result.to_dict(), indent=2))
+        typer.echo(f"Saved to {output}", err=True)
+
+
+@app.command()
+def stripe(
+    days: int = typer.Option(90, "--days", "-d", help="Look-back window in days"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", "-k", help="Stripe secret key (or STRIPE_API_KEY env)"),
+    include_subs: bool = typer.Option(True, "--subscriptions/--no-subscriptions", help="Include active subscriptions"),
+    save: Optional[Path] = typer.Option(None, "--save", "-s", help="Save raw transactions to CSV"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Save findings to JSON file"),
+) -> None:
+    """Pull Stripe charges and detect duplicate billing + anomalies."""
+    try:
+        from sios.connectors.stripe import StripeConnector
+    except ImportError:
+        typer.echo("Stripe connector requires stripe. Run: pip install sios[stripe]", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"\nConnecting to Stripe (last {days} days) ...", err=True)
+    try:
+        connector = StripeConnector(api_key=api_key)
+        transactions = connector.fetch(days=days)
+        if include_subs:
+            transactions += connector.fetch_subscriptions()
+    except Exception as exc:
+        typer.echo(f"Stripe error: {exc}", err=True)
+        raise typer.Exit(1)
+
+    if not transactions:
+        typer.echo("No charges found.")
+        raise typer.Exit(0)
+
+    typer.echo(f"  {len(transactions)} records fetched", err=True)
+
+    if save:
+        _save_transactions_csv(transactions, save)
+
+    from sios.value_engine.engine import ValueEngine
+    findings = ValueEngine().run(transactions)
+    _print_findings(findings, source="Stripe")
+
+    if output:
+        from sios.pipeline import AuditResult
+        result = AuditResult(
+            findings=findings,
+            estimated_savings=sum(f.estimated_amount for f in findings if f.estimated_amount),
+            currency=findings[0].currency if findings else "EUR",
+            dataset_rows=len(transactions),
+        )
+        Path(output).write_text(json.dumps(result.to_dict(), indent=2))
+        typer.echo(f"Saved to {output}", err=True)
+
+
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
+def _print_findings(findings, source: str = "") -> None:
+    if not findings:
+        typer.echo(f"\nNo findings detected in {source}.")
+        return
+
+    total = sum(f.estimated_amount for f in findings if f.estimated_amount)
+    currency = findings[0].currency if findings else "EUR"
+
+    typer.echo(f"\n{'─' * 52}")
+    if source:
+        typer.echo(f"  SIOS Audit — {source}")
+    typer.echo(f"{'─' * 52}")
+
+    for f in sorted(findings, key=lambda x: x.estimated_amount or 0, reverse=True):
+        amount = f"  {f.estimated_amount:,.0f} {f.currency}" if f.estimated_amount else ""
+        typer.echo(f"\n  [{_label(f.type.value)}]{amount}  (conf: {f.confidence:.0%})")
+        typer.echo(f"  {f.title}")
+
+    typer.echo(f"\n{'─' * 52}")
+    typer.echo(f"  Estimated recoverable: {total:,.0f} {currency}")
+    typer.echo(f"  Findings: {len(findings)}")
+    typer.echo(f"{'─' * 52}\n")
+
+
+def _save_transactions_csv(transactions, path: Path) -> None:
+    import csv
+    import io
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["date", "amount", "currency", "vendor", "description", "category", "source_id"])
+    for t in transactions:
+        w.writerow([
+            t.date.date() if hasattr(t.date, "date") else t.date,
+            t.amount, t.currency, t.vendor, t.description,
+            t.category or "", t.source_id or "",
+        ])
+    path.write_text(buf.getvalue())
+    typer.echo(f"Saved {len(transactions)} transactions to {path}", err=True)
+
+
 def main() -> None:
     app()
 

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[server]"
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  lint:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install pyright pydantic
+      - run: pyright sios/core sios/value_engine sios/store.py sios/pipeline.py --pythonversion 3.11
+        continue-on-error: true  # advisory only — failures are warnings
+
+  sios-smoke:
+    name: CLI smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e .
+      - name: Run quickstart
+        run: |
+          sios run examples/sample.csv
+          sios detect examples/sample.csv --format json | python -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d['estimated_savings'] > 0, 'No savings detected'
+          assert len(d['findings']) > 0, 'No findings detected'
+          print(f'OK: {len(d[\"findings\"])} findings, {d[\"estimated_savings\"]:.0f} EUR')
+          "

@@ -139,6 +139,55 @@ sios export file.csv --out report.json  # Save to file
 
 ---
 
+---
+
+## AWS connector
+
+Pull your AWS Cost Explorer data directly:
+
+```bash
+pip install sios[aws]
+
+sios aws --days 90
+sios aws --profile production --days 60 --save aws_costs.csv
+```
+
+Requirements: IAM permission `ce:GetCostAndUsage`
+
+---
+
+## Stripe connector
+
+Pull charges and detect duplicate billing:
+
+```bash
+pip install sios[stripe]
+
+export STRIPE_API_KEY=sk_live_...
+sios stripe --days 90
+sios stripe --api-key sk_live_... --save stripe_charges.csv
+```
+
+---
+
+## Python API — connectors
+
+```python
+from sios.connectors.aws import AWSConnector
+from sios.connectors.stripe import StripeConnector
+from sios.value_engine.engine import ValueEngine
+
+# AWS
+transactions = AWSConnector(profile="production").fetch(days=90)
+findings = ValueEngine().run(transactions)
+
+# Stripe
+transactions = StripeConnector(api_key="sk_live_...").fetch(days=90)
+findings = ValueEngine().run(transactions)
+```
+
+---
+
 ## Why SIOS
 
 Most companies lose money silently:
