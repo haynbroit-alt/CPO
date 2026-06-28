@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIOS — Find hidden money in your data</title>
+  <meta name="description" content="Upload a CSV. Get verified financial losses and cryptographic proof in under 2 minutes.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Hero ────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 72px 0 48px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin-top: 16px;
+      font-size: 1.15rem;
+      color: #555;
+    }
+
+    /* ── Example box ─────────────────────────────────────────── */
+    .example {
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 32px 0;
+      text-align: left;
+    }
+    .example h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #888;
+      margin-bottom: 14px;
+    }
+    .finding-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 0.95rem;
+    }
+    .finding-row:last-of-type { border-bottom: none; }
+    .finding-type { color: #444; }
+    .finding-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 0 0;
+      font-size: 1rem;
+      font-weight: 800;
+      border-top: 2px solid #1a1a1a;
+      margin-top: 8px;
+    }
+
+    /* ── Upload form ─────────────────────────────────────────── */
+    .form-card {
+      border: 2px solid #1a1a1a;
+      border-radius: 14px;
+      padding: 32px;
+      text-align: center;
+    }
+    .form-card h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .form-card .price-note {
+      font-size: 0.9rem;
+      color: #777;
+      margin-bottom: 24px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      padding: 32px 20px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #1a1a1a;
+      background: #fafafa;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-zone .icon { font-size: 2rem; margin-bottom: 8px; }
+    .drop-zone .label { font-size: 0.95rem; color: #555; }
+    .drop-zone .label b { color: #1a1a1a; }
+    .file-selected { font-size: 0.9rem; color: #1a1a1a; font-weight: 600; margin-top: 8px; }
+
+    .email-input {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px 16px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .email-input:focus { border-color: #1a1a1a; }
+
+    .cta-btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 16px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .cta-btn:hover { background: #333; }
+    .cta-btn:active { transform: scale(0.98); }
+    .cta-btn:disabled { background: #999; cursor: not-allowed; }
+
+    .trust-badges {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      font-size: 0.82rem;
+      color: #888;
+    }
+    .trust-badges span::before { content: "✓ "; color: #22c55e; font-weight: 700; }
+
+    /* ── How it works ────────────────────────────────────────── */
+    .section { padding: 48px 0; border-top: 1px solid #eee; }
+    .section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 24px; }
+
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+    .step-text strong { display: block; font-weight: 600; }
+    .step-text span { font-size: 0.9rem; color: #666; }
+
+    /* ── Detectors ────────────────────────────────────────────── */
+    .detector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 520px) { .detector-grid { grid-template-columns: 1fr; } }
+    .detector-card {
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .detector-card .tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .detector-card p { font-size: 0.9rem; color: #444; }
+
+    /* ── Proof section ────────────────────────────────────────── */
+    .proof-block {
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      font-family: "SFMono-Regular", "Consolas", monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    .proof-block .comment { color: #888; }
+    .proof-block .key { color: #93c5fd; }
+    .proof-block .val { color: #bbf7d0; }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      border-top: 1px solid #eee;
+      color: #aaa;
+      font-size: 0.85rem;
+    }
+    footer a { color: #888; }
+
+    /* ── Error / status messages ─────────────────────────────── */
+    .msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .msg.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .msg.info  { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <section class="hero">
+    <h1>Find hidden money<br>in your data.</h1>
+    <p>Upload a CSV. Get verified financial losses + cryptographic proof in under 2 minutes.</p>
+  </section>
+
+  <!-- ── Example ──────────────────────────────────────────── -->
+  <div class="example">
+    <h3>Example findings</h3>
+    <div class="finding-row">
+      <span class="finding-type">Duplicate AWS payment</span>
+      <span class="finding-amount">€1,250</span>
+    </div>
+    <div class="finding-row">
+      <span class="finding-type">Unused Slack subscription</span>
+      <span class="finding-amount">€890</span>
+    </div>
+    <div class="finding-row">
+      <span class="finding-type">Cloud waste (dev envs 24/7)</span>
+      <span class="finding-amount">€1,560</span>
+    </div>
+    <div class="total-row">
+      <span>Total detected</span>
+      <span>€3,700</span>
+    </div>
+  </div>
+
+  <!-- ── Upload form ───────────────────────────────────────── -->
+  <div class="form-card" id="upload-form">
+    <h2>Run your audit — €49</h2>
+    <p class="price-note">One-time payment. PDF report + cryptographic proof included.</p>
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".csv,.json" />
+      <div class="icon">📂</div>
+      <div class="label">
+        <b>Click to upload</b> or drag and drop<br>
+        <span>CSV or JSON · max 10 MB</span>
+      </div>
+      <div class="file-selected" id="file-name"></div>
+    </div>
+
+    <input
+      type="email"
+      class="email-input"
+      id="email-input"
+      placeholder="your@email.com (optional — receive PDF by email)"
+    />
+
+    <button class="cta-btn" id="submit-btn" disabled>
+      Upload &amp; Pay €49 →
+    </button>
+
+    <div class="trust-badges">
+      <span>Cryptographic proof included</span>
+      <span>Works on any CSV</span>
+      <span>No setup required</span>
+    </div>
+
+    <div class="msg error" id="error-msg"></div>
+    <div class="msg info"  id="info-msg"></div>
+  </div>
+
+  <!-- ── How it works ─────────────────────────────────────── -->
+  <section class="section">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>Upload your transaction file</strong>
+          <span>CSV or JSON from your bank, Stripe export, or AWS billing.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>Pay securely</strong>
+          <span>€49 one-time via Stripe. Card, Apple Pay, or Google Pay.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>Get your findings</strong>
+          <span>Duplicate charges, unused subscriptions, cloud waste — with amounts and confidence scores.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <strong>Download your proof</strong>
+          <span>PDF report with every finding and a cryptographic proof (CPO) you can share with your team or auditor.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Detectors ─────────────────────────────────────────── -->
+  <section class="section">
+    <h2>What SIOS detects</h2>
+    <div class="detector-grid">
+      <div class="detector-card">
+        <div class="tag">Duplicate payment</div>
+        <p>Same vendor + similar amount billed twice within days.</p>
+      </div>
+      <div class="detector-card">
+        <div class="tag">Unused subscription</div>
+        <p>Recurring charges with no usage signal. Tools nobody uses.</p>
+      </div>
+      <div class="detector-card">
+        <div class="tag">Cost anomaly</div>
+        <p>Statistically abnormal spend vs. your baseline for that vendor.</p>
+      </div>
+      <div class="detector-card">
+        <div class="tag">Cloud waste</div>
+        <p>Dev and staging environments running 24/7, never turned off.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Proof section ─────────────────────────────────────── -->
+  <section class="section">
+    <h2>Every result is verifiable</h2>
+    <p style="color:#555;margin-bottom:20px">
+      SIOS generates a Computational Proof Object (CPO) — a SHA-256 fingerprint of every
+      input, output, and finding. Re-run detection on the same file and get the same proof.
+      Share it with your finance team, external auditor, or vendor.
+    </p>
+    <div class="proof-block">
+      <span class="comment"># SIOS Audit Proof</span><br>
+      <span class="key">cpo</span>: <span class="val">"a83f2c91d4e7b0f3..."</span><br>
+      <span class="key">findings</span>: <span class="val">4</span><br>
+      <span class="key">total_detected</span>: <span class="val">3700.00 EUR</span><br>
+      <span class="key">reproducible</span>: <span class="val">true</span>
+    </div>
+  </section>
+
+  <!-- ── Footer ────────────────────────────────────────────── -->
+  <footer>
+    SIOS — Financial Audit Engine ·
+    <a href="https://github.com/haynbroit-alt/CPO">GitHub</a> ·
+    <a href="https://pypi.org/project/sios/">PyPI</a>
+    <br>
+    <span style="margin-top:6px;display:block">MIT License · pip install sios</span>
+  </footer>
+
+</div><!-- /container -->
+
+<script>
+  const fileInput   = document.getElementById('file-input');
+  const dropZone    = document.getElementById('drop-zone');
+  const fileName    = document.getElementById('file-name');
+  const submitBtn   = document.getElementById('submit-btn');
+  const emailInput  = document.getElementById('email-input');
+  const errorMsg    = document.getElementById('error-msg');
+  const infoMsg     = document.getElementById('info-msg');
+
+  let selectedFile = null;
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+    infoMsg.style.display = 'none';
+  }
+  function showInfo(msg) {
+    infoMsg.textContent = msg;
+    infoMsg.style.display = 'block';
+    errorMsg.style.display = 'none';
+  }
+  function clearMessages() {
+    errorMsg.style.display = 'none';
+    infoMsg.style.display = 'none';
+  }
+
+  function onFileSelected(file) {
+    if (!file) return;
+    if (!file.name.match(/\.(csv|json)$/i)) {
+      showError('Only .csv and .json files are accepted.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showError('File too large (max 10 MB).');
+      return;
+    }
+    clearMessages();
+    selectedFile = file;
+    fileName.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    submitBtn.disabled = false;
+  }
+
+  fileInput.addEventListener('change', () => onFileSelected(fileInput.files[0]));
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    onFileSelected(e.dataTransfer.files[0]);
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    clearMessages();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading…';
+
+    try {
+      // 1. Upload file
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('email', emailInput.value.trim());
+
+      const uploadRes = await fetch('/upload', { method: 'POST', body: formData });
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        throw new Error(err.detail || `Upload failed (${uploadRes.status})`);
+      }
+      const { session_id } = await uploadRes.json();
+
+      // 2. Get checkout URL
+      showInfo('Redirecting to payment…');
+      submitBtn.textContent = 'Preparing payment…';
+
+      const checkoutRes = await fetch(`/checkout/${session_id}`, { method: 'POST' });
+      if (!checkoutRes.ok) {
+        const err = await checkoutRes.json().catch(() => ({}));
+        throw new Error(err.detail || `Checkout failed (${checkoutRes.status})`);
+      }
+      const { url, dev_mode } = await checkoutRes.json();
+
+      if (dev_mode) {
+        showInfo('Dev mode: payment skipped. Redirecting to results…');
+      }
+
+      // 3. Redirect to Stripe (or results in dev mode)
+      window.location.href = url;
+
+    } catch (err) {
+      showError(err.message || 'Something went wrong. Please try again.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Upload & Pay €49 →';
+    }
+  });
+</script>
+
+</body>
+</html>

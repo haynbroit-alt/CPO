@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIOS — Audit Results</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    .container { max-width: 680px; margin: 0 auto; padding: 0 24px 64px; }
+
+    .header { text-align: center; padding: 48px 0 32px; }
+    .header h1 { font-size: 1.8rem; font-weight: 800; }
+    .header p  { color: #666; margin-top: 8px; }
+
+    /* ── States ─────────────────────────── */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    .loading-box { text-align: center; padding: 48px 0; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #eee;
+      border-top-color: #1a1a1a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Summary */
+    .summary-card {
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 14px;
+      padding: 28px 32px;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .summary-card .label { font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 0.06em; }
+    .summary-card .total { font-size: 2.8rem; font-weight: 900; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .summary-card .sub   { color: #aaa; font-size: 0.95rem; margin-top: 6px; }
+
+    /* Findings */
+    .findings-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+    .finding-card {
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .finding-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .finding-type {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #888;
+    }
+    .finding-amount {
+      font-size: 1.2rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .finding-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .finding-desc  { font-size: 0.88rem; color: #666; }
+    .finding-conf  { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+
+    /* Actions */
+    .actions { display: flex; flex-direction: column; gap: 12px; }
+    .btn {
+      display: block;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #1a1a1a; color: #fff; border: none; }
+    .btn-outline { background: #fff; color: #1a1a1a; border: 2px solid #1a1a1a; }
+
+    /* Proof */
+    .proof-block {
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: "SFMono-Regular", "Consolas", monospace;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      margin-bottom: 28px;
+      word-break: break-all;
+    }
+    .proof-label { font-size: 0.78rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+
+    /* Error */
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 24px;
+      color: #dc2626;
+      text-align: center;
+    }
+    .error-box a { color: #dc2626; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>SIOS Audit</h1>
+    <p id="header-sub">Running your financial audit…</p>
+  </div>
+
+  <!-- Loading -->
+  <div class="state active" id="state-loading">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <p>Analyzing your transactions…</p>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="state" id="state-results">
+    <div class="summary-card">
+      <div class="label">Estimated recoverable</div>
+      <div class="total" id="total-amount">—</div>
+      <div class="sub" id="summary-sub">—</div>
+    </div>
+
+    <div class="findings-list" id="findings-list"></div>
+
+    <div class="proof-label">Cryptographic proof (CPO)</div>
+    <div class="proof-block" id="cpo-block"></div>
+
+    <div class="actions">
+      <a id="download-btn" class="btn btn-primary" href="#" style="display:none">
+        Download PDF Report →
+      </a>
+      <a href="/" class="btn btn-outline">Run another audit</a>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="state" id="state-error">
+    <div class="error-box">
+      <p id="error-text">Something went wrong.</p>
+      <br>
+      <a href="/">← Back to upload</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const SESSION_ID = "{{SESSION_ID}}";
+
+  function show(id) {
+    document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function formatAmount(amount, currency) {
+    return new Intl.NumberFormat('en-EU', {
+      style: 'currency',
+      currency: currency || 'EUR',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  function renderFinding(f) {
+    const label = f.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const conf = Math.round(f.confidence * 100);
+    return `
+      <div class="finding-card">
+        <div class="finding-header">
+          <span class="finding-type">${label}</span>
+          <span class="finding-amount">${formatAmount(f.estimated_amount, f.currency)}</span>
+        </div>
+        <div class="finding-title">${f.title}</div>
+        ${f.description ? `<div class="finding-desc">${f.description}</div>` : ''}
+        <div class="finding-conf">Confidence: ${conf}%</div>
+      </div>`;
+  }
+
+  async function runAudit() {
+    try {
+      const res = await fetch(`/run/${SESSION_ID}`);
+
+      if (res.status === 402) {
+        document.getElementById('error-text').textContent =
+          'Payment not confirmed yet. Please complete checkout and return to this page.';
+        show('state-error');
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        document.getElementById('error-text').textContent =
+          data.detail || `Error ${res.status} — please try again.`;
+        show('state-error');
+        return;
+      }
+
+      const data = await res.json();
+
+      // Summary
+      document.getElementById('header-sub').textContent = 'Your audit is complete.';
+      document.getElementById('total-amount').textContent =
+        formatAmount(data.total_detected, data.currency);
+      document.getElementById('summary-sub').textContent =
+        `${data.findings_count} finding${data.findings_count !== 1 ? 's' : ''} · ${data.transactions_analyzed} transactions analyzed`;
+
+      // Findings
+      const list = document.getElementById('findings-list');
+      list.innerHTML = data.findings.map(renderFinding).join('');
+
+      // CPO
+      document.getElementById('cpo-block').textContent =
+        `cpo: "${data.cpo}"\nreproducible: true\nfindings: ${data.findings_count}\ntotal: ${data.total_detected} ${data.currency}`;
+
+      // Download button
+      if (data.download_url) {
+        const btn = document.getElementById('download-btn');
+        btn.href = data.download_url;
+        btn.style.display = 'block';
+      }
+
+      show('state-results');
+
+    } catch (err) {
+      document.getElementById('error-text').textContent =
+        err.message || 'Network error — please try again.';
+      show('state-error');
+    }
+  }
+
+  runAudit();
+</script>
+</body>
+</html>
