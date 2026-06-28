@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from sios.core.ingestion import from_csv, from_json
 from sios.core.models import (
@@ -70,6 +70,13 @@ class RecoverRequest(BaseModel):
     recovered_amount: float
     currency: str = "EUR"
     document_refs: List[str] = []
+
+    @field_validator("recovered_amount")
+    @classmethod
+    def _positive_amount(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("recovered_amount must be positive")
+        return v
     data_refs: List[str] = []
     beneficiary: str
     cpo_id: Optional[str] = None
