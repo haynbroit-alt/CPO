@@ -28,6 +28,7 @@ from app.peers import (
 )
 from app.storage import all_cpos, append, find_by_hash, find_by_id
 from config import DEFAULT_WORLD, SUPPORTED_WORLDS
+from sios.api.routes import router as sios_router
 
 # ---------------------------------------------------------------------------
 # Node initialisation
@@ -45,11 +46,16 @@ async def _lifespan(application: FastAPI):
 
 
 app = FastAPI(
-    title="Proof Protocol Node",
+    title="SIOS — Sovereign Intelligence Operating System",
     version="1.0.0",
-    description="Unified verifiable computation layer across all AI paradigm worlds.",
+    description=(
+        "Proof Protocol node + SIOS Value Engine. "
+        "Verifiable computation (CPO) + automatic value detection (Findings + PVC)."
+    ),
     lifespan=_lifespan,
 )
+
+app.include_router(sios_router)
 
 
 # ---------------------------------------------------------------------------
@@ -81,12 +87,32 @@ def index() -> Dict:
         "status": "Proof Protocol Node online",
         "node_id": NODE_ID,
         "worlds": sorted(SUPPORTED_WORLDS),
-        "endpoints": [
-            "/prove", "/ask", "/verify/{cpo_hash}", "/cpo/{cpo_id}", "/ledger",
-            "/health", "/node",
-            "/peers/announce", "/peers",
-            "/attest/{cpo_hash}", "/cpo/{cpo_id}/attestations",
-        ],
+        "endpoints": {
+            "proof_protocol": [
+                "/prove", "/ask", "/verify/{cpo_hash}", "/cpo/{cpo_id}", "/ledger",
+                "/health", "/node",
+                "/peers/announce", "/peers",
+                "/attest/{cpo_hash}", "/cpo/{cpo_id}/attestations",
+            ],
+            "sios_value_engine": [
+                "/sios/ingest", "/sios/ingest/csv", "/sios/normalize",
+                "/sios/detect",
+                "/sios/finding/{id}", "/sios/findings",
+                "/sios/recover", "/sios/pvc/{id}",
+                "/sios/leaderboard",
+            ],
+            "sios_discovery": [
+                "/sios/discover",
+                "/sios/opportunity/{id}", "/sios/opportunities",
+            ],
+            "sios_swarm": [
+                "/sios/spore", "/sios/spore/{id}",
+                "/sios/spore/{id}/execute", "/sios/spore/{id}/rate",
+                "/sios/swarm/stats", "/sios/swarm/top",
+                "/sios/swarm/evolve", "/sios/swarm/leaderboard",
+                "/sios/swarm (DELETE — purge)",
+            ],
+        },
     }
 
 
