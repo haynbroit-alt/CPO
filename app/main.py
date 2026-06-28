@@ -101,6 +101,10 @@ def index() -> Dict:
                 "/sios/recover", "/sios/pvc/{id}",
                 "/sios/leaderboard",
             ],
+            "sios_discovery": [
+                "/sios/discover",
+                "/sios/opportunity/{id}", "/sios/opportunities",
+            ],
         },
     }
 

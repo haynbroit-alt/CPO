@@ -1,4 +1,4 @@
-"""SIOS FastAPI routes — /ingest, /detect, /finding, /pvc, /recover."""
+"""SIOS FastAPI routes — /ingest, /detect, /discover, /finding, /pvc, /recover."""
 
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ from sios.core.models import (
     PVC,
     RecoveryProof,
 )
+from sios.discovery.engine import DiscoveryEngine
+from sios.discovery.models import Opportunity
 from sios.value_engine.engine import ValueEngine
 
 router = APIRouter(prefix="/sios", tags=["SIOS"])
@@ -28,6 +30,8 @@ router = APIRouter(prefix="/sios", tags=["SIOS"])
 _transactions: Dict[str, CanonicalTransaction] = {}
 _findings: Dict[str, Finding] = {}
 _pvcs: Dict[str, PVC] = {}
+_opportunities: Dict[str, Opportunity] = {}
+_discovery_engine = DiscoveryEngine()
 _engine = ValueEngine()
 
 
@@ -197,6 +201,66 @@ def leaderboard() -> List[Dict]:
         }
         for p in pvcs
     ]
+
+
+# ---------------------------------------------------------------------------
+# Discovery Engine routes
+# ---------------------------------------------------------------------------
+
+class DiscoverRequest(BaseModel):
+    arxiv_categories: Optional[List[str]] = None
+    arxiv_max: int = 20
+    pubmed_query: str = "machine learning"
+    pubmed_max: int = 15
+    wikipedia_topics: Optional[List[str]] = None
+
+
+@router.post("/discover", status_code=201)
+def discover(req: DiscoverRequest) -> Dict:
+    """Run the Discovery Engine (DeepSight) and store resulting Opportunities."""
+    opps = _discovery_engine.run(
+        arxiv_categories=req.arxiv_categories,
+        arxiv_max=req.arxiv_max,
+        pubmed_query=req.pubmed_query,
+        pubmed_max=req.pubmed_max,
+        wikipedia_topics=req.wikipedia_topics,
+    )
+    for o in opps:
+        _opportunities[o.id] = o
+
+    summary = _discovery_engine.summary(opps)
+    return {
+        "status": "ok",
+        "new_opportunities": len(opps),
+        "opportunity_ids": [o.id for o in opps],
+        "summary": summary,
+    }
+
+
+@router.get("/opportunity/{opp_id}")
+def get_opportunity(opp_id: str) -> Dict:
+    """Retrieve a stored Opportunity by ID."""
+    o = _opportunities.get(opp_id)
+    if o is None:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    return o.model_dump()
+
+
+@router.get("/opportunities")
+def list_opportunities(
+    domain: Optional[str] = None,
+    opp_type: Optional[str] = None,
+    min_confidence: float = 0.0,
+) -> List[Dict]:
+    """List all stored Opportunities, optionally filtered."""
+    results = list(_opportunities.values())
+    if domain:
+        results = [o for o in results if o.discovery_domain == domain]
+    if opp_type:
+        results = [o for o in results if o.type.value == opp_type]
+    results = [o for o in results if o.confidence >= min_confidence]
+    results.sort(key=lambda o: o.confidence, reverse=True)
+    return [o.model_dump() for o in results]
 
 
 # ---------------------------------------------------------------------------
