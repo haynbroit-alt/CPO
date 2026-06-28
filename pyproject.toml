@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "sios"
 version = "1.0.0"
 description = "Find hidden financial losses in your data. Proved, not predicted."
-readme = "QUICKSTART.md"
+readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 keywords = ["finance", "audit", "anomaly-detection", "cost-optimization", "proof"]
