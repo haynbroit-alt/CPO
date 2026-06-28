@@ -1,8 +1,9 @@
-"""SIOS FastAPI routes — /ingest, /detect, /discover, /finding, /pvc, /recover."""
+"""SIOS FastAPI routes — /ingest, /detect, /discover, /finding, /pvc, /recover, /swarm."""
 
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -20,6 +21,8 @@ from sios.core.models import (
 )
 from sios.discovery.engine import DiscoveryEngine
 from sios.discovery.models import Opportunity
+from sios.swarm.models import FitnessSignal, Spore as SwarmSpore
+from sios.swarm.node import SwarmNode
 from sios.value_engine.engine import ValueEngine
 
 router = APIRouter(prefix="/sios", tags=["SIOS"])
@@ -33,6 +36,19 @@ _pvcs: Dict[str, PVC] = {}
 _opportunities: Dict[str, Opportunity] = {}
 _discovery_engine = DiscoveryEngine()
 _engine = ValueEngine()
+
+
+def _swarm() -> SwarmNode:
+    """Lazily initialise the local SwarmNode (singleton per process)."""
+    global _swarm_node
+    if _swarm_node is None:
+        node_id = os.environ.get("SIOS_NODE_ID", f"node-{uuid.uuid4().hex[:8]}")
+        llm_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        _swarm_node = SwarmNode(node_id=node_id, llm_available=llm_available)
+    return _swarm_node
+
+
+_swarm_node: Optional[SwarmNode] = None
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +277,152 @@ def list_opportunities(
     results = [o for o in results if o.confidence >= min_confidence]
     results.sort(key=lambda o: o.confidence, reverse=True)
     return [o.model_dump() for o in results]
+
+
+# ---------------------------------------------------------------------------
+# Swarm routes
+# ---------------------------------------------------------------------------
+
+class SporeSubmitRequest(BaseModel):
+    code: str
+    description: str = ""
+    parent_id: Optional[str] = None
+    generation: int = 0
+    mutation_notes: str = ""
+    metadata: Dict[str, Any] = {}
+
+
+class RateSporeRequest(BaseModel):
+    score: float                    # 0.0 – 1.0
+    execution_time_ms: float = 0.0
+    output_hash: str = ""
+    notes: str = ""
+
+
+class EvolveRequest(BaseModel):
+    pass  # no parameters for now; reserved for future strategy overrides
+
+
+@router.post("/spore", status_code=201)
+def submit_spore(req: SporeSubmitRequest) -> Dict:
+    """Submit a new Spore to the local swarm."""
+    spore = SwarmSpore(
+        code=req.code,
+        description=req.description,
+        parent_id=req.parent_id,
+        generation=req.generation,
+        mutation_notes=req.mutation_notes,
+        metadata=req.metadata,
+    )
+    node = _swarm()
+    accepted = node.ingest(spore)
+    return {
+        "status": "accepted" if accepted else "duplicate",
+        "spore_id": spore.id,
+        "generation": spore.generation,
+    }
+
+
+@router.post("/spore/{spore_id}/execute", status_code=201)
+def execute_spore(spore_id: str) -> Dict:
+    """Execute a Spore in the BEE sandbox and return its fitness signal."""
+    node = _swarm()
+    signal = node.execute(spore_id)
+    if signal is None:
+        raise HTTPException(status_code=404, detail="Spore not found")
+    spore = node.get(spore_id)
+    return {
+        "spore_id": spore_id,
+        "status": spore.status.value if spore else "unknown",
+        "fitness": spore.fitness if spore else 0.0,
+        "signal": signal.model_dump(),
+    }
+
+
+@router.post("/spore/{spore_id}/rate", status_code=201)
+def rate_spore(spore_id: str, req: RateSporeRequest) -> Dict:
+    """Submit an external fitness signal for a Spore."""
+    node = _swarm()
+    spore = node.get(spore_id)
+    if spore is None:
+        raise HTTPException(status_code=404, detail="Spore not found")
+
+    signal = FitnessSignal(
+        node_id=f"external-{uuid.uuid4().hex[:8]}",
+        spore_id=spore_id,
+        score=max(0.0, min(1.0, req.score)),
+        execution_time_ms=req.execution_time_ms,
+        output_hash=req.output_hash or f"external-{uuid.uuid4().hex}",
+        notes=req.notes,
+    )
+    spore.fitness_signals.append(signal)
+    spore.update_fitness()
+
+    return {
+        "spore_id": spore_id,
+        "fitness": round(spore.fitness, 3),
+        "signal_count": len(spore.fitness_signals),
+    }
+
+
+@router.get("/spore/{spore_id}")
+def get_spore(spore_id: str) -> Dict:
+    """Retrieve a Spore by ID."""
+    spore = _swarm().get(spore_id)
+    if spore is None:
+        raise HTTPException(status_code=404, detail="Spore not found")
+    return spore.model_dump()
+
+
+@router.get("/swarm/stats")
+def swarm_stats() -> Dict:
+    """Return aggregate statistics for the local swarm population."""
+    return _swarm().stats().model_dump()
+
+
+@router.get("/swarm/top")
+def swarm_top(n: int = 10) -> List[Dict]:
+    """Return the n highest-fitness alive Spores."""
+    return [s.model_dump() for s in _swarm().top_spores(n)]
+
+
+@router.post("/swarm/evolve", status_code=201)
+def swarm_evolve(_req: EvolveRequest = EvolveRequest()) -> Dict:
+    """Trigger one evolution cycle — select, mutate, produce children."""
+    node = _swarm()
+    children = node.evolve()
+    return {
+        "status": "evolved",
+        "new_children": len(children),
+        "child_ids": [c.id for c in children],
+        "stats": node.stats().model_dump(),
+    }
+
+
+@router.get("/swarm/leaderboard")
+def swarm_leaderboard() -> List[Dict]:
+    """All Spores ranked by fitness, with lineage information."""
+    spores = sorted(_swarm().all(), key=lambda s: s.fitness, reverse=True)
+    return [
+        {
+            "rank": i + 1,
+            "spore_id": s.id,
+            "fitness": round(s.fitness, 3),
+            "status": s.status.value,
+            "generation": s.generation,
+            "parent_id": s.parent_id,
+            "execution_count": s.execution_count,
+            "description": s.description,
+        }
+        for i, s in enumerate(spores)
+    ]
+
+
+@router.delete("/swarm", status_code=200)
+def swarm_purge() -> Dict:
+    """Consent revocation — remove all Spores from this node."""
+    n = _swarm().purge()
+    return {"status": "purged", "removed": n}
 
 
 # ---------------------------------------------------------------------------

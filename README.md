@@ -217,6 +217,35 @@ Used to: prioritise agents · allocate budgets · distribute rewards · compare 
 
 ---
 
+## SIOS Swarm — voluntary P2P evolution network
+
+The Swarm is a consent-first P2P layer where **Spores** (verifiable programs) evolve through fitness-based natural selection.
+
+```
+Spore (code + lineage) → BEE sandbox → FitnessSignal → EvolutionEngine → child Spores
+```
+
+Every execution runs in the same CPO sandbox and produces a cryptographic proof.  
+Nodes join voluntarily; Spores propagate only between consenting peers.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/sios/spore` | Submit a new Spore |
+| `GET` | `/sios/spore/{id}` | Retrieve a Spore |
+| `POST` | `/sios/spore/{id}/execute` | Execute in BEE sandbox, record fitness |
+| `POST` | `/sios/spore/{id}/rate` | Submit external fitness signal |
+| `GET` | `/sios/swarm/stats` | Population statistics |
+| `GET` | `/sios/swarm/top` | Top *n* Spores by fitness |
+| `POST` | `/sios/swarm/evolve` | Trigger selection + mutation cycle |
+| `GET` | `/sios/swarm/leaderboard` | All Spores ranked by fitness |
+| `DELETE` | `/sios/swarm` | Consent revocation — purge all Spores |
+
+**Mutation strategies:** cosmetic (lineage tracking) · parametric (±20% numeric perturbation) · LLM-guided (functional variation via Claude).
+
+→ [`sios/swarm/`](sios/swarm/)
+
+---
+
 ## Business model
 
 | Model | Description |
@@ -236,6 +265,8 @@ Used to: prioritise agents · allocate budgets · distribute rewards · compare 
 - [x] LangChain + DSPy adapters
 - [x] SIOS Core (ingestion + normalisation)
 - [x] Value Engine — duplicate, subscription, anomaly, cloud detectors
+- [x] Discovery Engine (DeepSight) — arXiv, PubMed, Wikipedia scanners
+- [x] SIOS Swarm — voluntary P2P evolutionary network with CPO-verified fitness
 - [ ] PyPI publish (`langchain-cpo`, `dspy-cpo`)
 - [ ] PDF / Excel ingestion (PaddleOCR)
 

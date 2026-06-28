@@ -105,6 +105,13 @@ def index() -> Dict:
                 "/sios/discover",
                 "/sios/opportunity/{id}", "/sios/opportunities",
             ],
+            "sios_swarm": [
+                "/sios/spore", "/sios/spore/{id}",
+                "/sios/spore/{id}/execute", "/sios/spore/{id}/rate",
+                "/sios/swarm/stats", "/sios/swarm/top",
+                "/sios/swarm/evolve", "/sios/swarm/leaderboard",
+                "/sios/swarm (DELETE — purge)",
+            ],
         },
     }
 
