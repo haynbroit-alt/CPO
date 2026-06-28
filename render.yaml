@@ -1,5 +1,32 @@
 services:
   - type: web
+    name: sios-cashflow
+    runtime: docker
+    dockerfilePath: ./Dockerfile.cashflow
+    plan: free
+    healthCheckPath: /health
+
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      - key: BASE_URL
+        sync: false   # set to your Render public URL, e.g. https://sios-cashflow.onrender.com
+
+      - key: AUDIT_PRICE_CENTS
+        value: "4900"
+
+      - key: SIOS_REPORTS_DIR
+        value: ./reports
+
+      # Email delivery — set one of the two options in the Render dashboard:
+      - key: RESEND_API_KEY
+        sync: false
+
+  - type: web
     name: proof-protocol
     runtime: docker
     dockerfilePath: ./Dockerfile
