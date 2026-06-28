@@ -73,6 +73,14 @@ class Finding(BaseModel):
     detected_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
+    # Trust layer v2 — CFO-grade anti-hallucination
+    trust_score: int = 0                # 0–100
+    trust_tier: str = "LOW"             # LOW | MEDIUM | HIGH
+    estimate_low: Optional[float] = None
+    estimate_high: Optional[float] = None
+    observed_value: Optional[float] = None
+    observed_period: Optional[str] = None
+
 
 class RecoveryProof(BaseModel):
     """Evidence that a Finding was actually recovered."""
