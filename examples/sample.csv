@@ -1,0 +1,22 @@
+date,amount,currency,vendor,description,category
+2024-01-03,1180.00,EUR,AWS,EC2 Production — January,cloud
+2024-01-05,299.00,EUR,Slack,Slack Pro — Team,saas
+2024-01-05,299.00,EUR,Slack,Slack Pro — Team (duplicate charge),saas
+2024-01-08,89.00,EUR,Notion,Notion Team Plan — January,saas
+2024-01-12,49.00,EUR,GitHub,GitHub Teams — January,saas
+2024-01-15,430.00,EUR,AWS,EC2 Dev environment — January,cloud
+2024-01-20,1190.00,EUR,AWS,S3 Storage + Transfer — January,cloud
+2024-02-03,1195.00,EUR,AWS,EC2 Production — February,cloud
+2024-02-05,299.00,EUR,Slack,Slack Pro — Team,saas
+2024-02-08,89.00,EUR,Notion,Notion Team Plan — February,saas
+2024-02-10,49.00,EUR,GitHub,GitHub Teams — February,saas
+2024-02-12,435.00,EUR,AWS,EC2 Dev environment — February,cloud
+2024-02-14,8900.00,EUR,AWS,EC2 — Load test environment (one-time),cloud
+2024-02-18,1205.00,EUR,AWS,S3 Storage + Transfer — February,cloud
+2024-02-20,1195.00,EUR,AWS,EC2 Production — February (duplicate invoice),cloud
+2024-03-03,1200.00,EUR,AWS,EC2 Production — March,cloud
+2024-03-05,299.00,EUR,Slack,Slack Pro — Team,saas
+2024-03-08,89.00,EUR,Notion,Notion Team Plan — March,saas
+2024-03-10,49.00,EUR,GitHub,GitHub Teams — March,saas
+2024-03-12,440.00,EUR,AWS,EC2 Dev environment — March,cloud
+2024-03-18,1200.00,EUR,AWS,S3 Storage + Transfer — March,cloud

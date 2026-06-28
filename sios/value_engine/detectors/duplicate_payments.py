@@ -17,7 +17,7 @@ class DuplicatePaymentDetector(BaseDetector):
 
     def __init__(
         self,
-        window_days: int = 30,
+        window_days: int = 7,
         amount_tolerance: float = 0.01,
         min_amount: float = 10.0,
     ) -> None:
