@@ -1,11 +1,209 @@
-# SIOS — Sovereign Intelligence Operating System
+# SIOS — Financial Audit Engine
 
-**Open infrastructure for verifiable value creation by autonomous agents.**
+> Detect hidden financial losses in your transaction data. Every finding is reproducible and cryptographically signed.
 
 ```
-✓ Canonical data model from any source    ✓ Automatic opportunity detection
-✓ Cryptographic execution proofs (CPO)    ✓ Proof of Value Creation (PVC)
-✓ Agent reputation & scoring (AXIOM)      ✓ Open agent marketplace
+pip install sios
+sios run examples/sample.csv
+```
+
+```
+────────────────────────────────────────────────────────
+  SIOS Audit — sample.csv
+  21 transactions analyzed
+────────────────────────────────────────────────────────
+
+  [Duplicate payment]        1,195 EUR  conf: 95%
+  Duplicate AWS charge — EC2 Production (Feb)
+
+  [Cost anomaly]             7,650 EUR  conf: 72%
+  AWS spike vs. baseline — load test environment (Feb 14)
+
+  [Unused subscription]        588 EUR  conf: 80%
+  GitHub Teams — 3 recurring charges, no usage signal
+
+  [Cloud waste]                522 EUR  conf: 65%
+  EC2 dev environments running 24/7 across 3 months
+
+────────────────────────────────────────────────────────
+  Estimated recoverable: 31,121 EUR
+  Findings: 12
+────────────────────────────────────────────────────────
+```
+
+**One dataset → one audit → one proof.**
+
+---
+
+## Install
+
+```bash
+pip install sios
+```
+
+Requires Python 3.11+. Zero configuration.
+
+---
+
+## Quickstart
+
+```bash
+# Run a full financial audit
+sios run transactions.csv
+
+# JSON output for downstream processing
+sios detect transactions.csv --format json
+
+# Export to file
+sios export transactions.csv --out report.json
+```
+
+**Time-to-value: under 2 minutes from install to first findings.**
+
+---
+
+## What SIOS detects
+
+| Finding type | Description | Typical recovery |
+|---|---|---|
+| `duplicate_payment` | Same vendor + similar amount within 7 days | Full refund |
+| `unused_subscription` | Recurring charges with no counterpart activity | Cancel or renegotiate |
+| `cost_anomaly` | Statistically abnormal spend (IQR fence per vendor) | Investigate + credit |
+| `cloud_waste` | Dev/staging environments running continuously | Right-size or terminate |
+
+Each finding includes an **estimated recovery amount**, a **confidence score (0–100%)**, an **evidence snapshot**, and **recommended actions**.
+
+---
+
+## Input format
+
+CSV with these columns (order doesn't matter):
+
+```csv
+date,amount,currency,vendor,description
+2024-01-15,299,EUR,Slack,Slack Pro subscription
+2024-02-15,299,EUR,Slack,Slack Pro subscription
+2024-01-20,1250,EUR,AWS,EC2 dev server
+```
+
+Minimum required: `date`, `amount`, `vendor`.  
+Also accepts JSON. Currency defaults to EUR; detected per-dataset automatically.
+
+---
+
+## Python SDK
+
+```python
+from sios import SIOS
+
+agent = SIOS()
+result = agent.run("data/transactions.csv")
+
+print(f"Estimated savings: {result.estimated_savings:,.0f} {result.currency}")
+
+for finding in result.findings:
+    print(f"  [{finding.type.value}]  {finding.estimated_amount:,.0f} {finding.currency}  conf={finding.confidence:.0%}")
+    print(f"  {finding.title}")
+    print(f"  {finding.description[:100]}")
+```
+
+### AuditResult fields
+
+| Field | Type | Description |
+|---|---|---|
+| `findings` | `List[Finding]` | Detected anomalies, ordered by amount |
+| `estimated_savings` | `float` | Total recoverable across all findings |
+| `currency` | `str` | Currency code (`EUR`, `USD`, …) |
+| `dataset_rows` | `int` | Number of transactions analyzed |
+| `summary` | `dict` | Breakdown by finding type |
+
+---
+
+## Cloud connectors
+
+### AWS Cost Explorer
+
+Pull your AWS billing data directly — no CSV export needed:
+
+```bash
+pip install sios[aws]
+
+sios aws --days 90
+sios aws --profile production --days 60 --save aws_costs.csv
+```
+
+Requires IAM permission `ce:GetCostAndUsage`. Detects idle reservations, dev environment waste, and service-level anomalies.
+
+### Stripe
+
+Pull charges and subscriptions, detect duplicate billing and subscription drift:
+
+```bash
+pip install sios[stripe]
+
+export STRIPE_API_KEY=sk_live_...
+sios stripe --days 90
+sios stripe --api-key sk_live_... --save stripe_charges.csv
+```
+
+### Python API — connectors
+
+```python
+from sios.connectors.aws import AWSConnector
+from sios.connectors.stripe import StripeConnector
+from sios.value_engine.engine import ValueEngine
+
+# AWS
+transactions = AWSConnector(profile="production").fetch(days=90)
+findings = ValueEngine().run(transactions)
+
+# Stripe
+transactions = StripeConnector(api_key="sk_live_...").fetch(days=90)
+findings = ValueEngine().run(transactions)
+```
+
+---
+
+## Verifiable proofs (optional)
+
+Every finding can be signed and submitted to a Proof Protocol node:
+
+```bash
+sios prove transactions.csv --node https://your-sios-node.onrender.com
+```
+
+```
+Generating proofs via https://your-sios-node.onrender.com ...
+
+  AWS duplicate charge confirmed          CPO: 3f8a21c9b7...
+  Slack subscription anomaly              CPO: 9d1e4507a2...
+  Dev environment cloud waste             CPO: c2f6bb0814...
+
+3 proofs generated.
+```
+
+Each **CPO (Computational Proof Object)** is:
+- **Cryptographically signed** — Ed25519 signature over the canonical payload
+- **Content-addressed** — SHA-256 hash of inputs + outputs
+- **Reproducible** — re-execute at any time, get the same result
+- **Append-only** — recorded in a tamper-evident ledger
+
+The proof ties the finding to the specific code, data, and environment that produced it — creating an **audit trail** suitable for sharing with finance teams, external auditors, or vendors during dispute resolution.
+
+---
+
+## Export
+
+```bash
+# JSON report
+sios detect transactions.csv --format json > report.json
+
+# CSV for Excel / BI tools
+sios detect transactions.csv --format csv > report.csv
+
+# Save directly
+sios export transactions.csv --out report.json
+sios export transactions.csv --format csv --out report.csv
 ```
 
 ---
@@ -13,310 +211,115 @@
 ## Architecture
 
 ```
-  Sources de données
-  (CSV · JSON · Stripe · Shopify · AWS · Pennylane · Sage · QuickBooks · Qonto)
+  Input (CSV · JSON · Stripe · AWS)
           │
           ▼
-  ┌─────────────────────────────┐
-  │  SIOS Core                  │  Ingestion → Extraction → Normalisation
-  │  Canonical Data Model       │  Every transaction becomes a standard object
-  └─────────────────────────────┘
+  ┌─────────────────────┐
+  │  Ingestion layer    │  Transaction normalization → canonical data model
+  └─────────────────────┘
           │
           ▼
-  ┌─────────────────────────────┐
-  │  Value Engine               │  Automatic detection of hidden value
-  │  Findings                   │  Duplicates · Subscriptions · Anomalies · Cloud waste
-  └─────────────────────────────┘
+  ┌─────────────────────┐
+  │  Value Engine       │  Rule-based detection pipeline (idempotent, stateless)
+  │  4 detectors        │  duplicate · subscription · anomaly · cloud waste
+  └─────────────────────┘
           │
           ▼
-  ┌─────────────────────────────┐
-  │  Proof Protocol (CPO)       │  Every computation is signed and replayable
-  │  Computational Proof Object │  Ed25519 · SHA-256 · append-only ledger
-  └─────────────────────────────┘
+  ┌─────────────────────┐
+  │  Findings           │  amount · confidence · evidence · recommended actions
+  └─────────────────────┘
           │
           ▼
-  ┌─────────────────────────────┐
-  │  Proof of Value Creation    │  When a finding is recovered → PVC is minted
-  │  (PVC)                      │  Finding + CPO + recovery proof → verifiable record
-  └─────────────────────────────┘
-          │
-          ▼
-  ┌─────────────────────────────┐
-  │  AXIOM                      │  Agent scoring and capital allocation
-  │  AxiomScore                 │  PVC history · reputation · risk
-  └─────────────────────────────┘
-          │
-          ▼
-  Agent Marketplace  →  Clients / Entreprises / Cabinets
+  ┌─────────────────────┐
+  │  Proof Protocol     │  Ed25519 sign · SHA-256 hash · append-only ledger
+  │  (optional)         │  Verifiable, reproducible execution trace
+  └─────────────────────┘
+```
+
+**Design principles:**
+- **Deterministic execution** — same input always produces the same findings
+- **Idempotent processing** — running twice on the same dataset returns cached results
+- **Modular architecture** — each detector is an independent plugin; add your own
+- **Persistent store** — SQLite (default) or Postgres; WAL mode, thread-safe
+- **Stateless API** — the FastAPI server layer adds no shared mutable state
+
+---
+
+## CLI reference
+
+```bash
+sios run    file.csv                      # Full audit, formatted output
+sios detect file.csv                      # Detection only, table format
+sios detect file.csv --format json        # JSON output
+sios detect file.csv --format csv         # CSV output
+sios prove  file.csv --node <url>         # Audit + generate CPO proofs
+sios export file.csv --out report.json    # Save to file
+sios aws    --days 90                     # Pull from AWS Cost Explorer
+sios stripe --days 90                     # Pull from Stripe
 ```
 
 ---
 
-## The four layers
+## Install options
 
-### 1 — SIOS Core
-Transforms any data source into a canonical, source-agnostic transaction model.
-Supported: CSV, JSON, Stripe, Shopify, Pennylane, Sage, QuickBooks, Qonto, AWS, Azure, GCP.
+```bash
+pip install sios              # Core (CLI + Python SDK)
+pip install sios[aws]         # + AWS Cost Explorer connector
+pip install sios[stripe]      # + Stripe connector
+pip install sios[server]      # + FastAPI proof server
+pip install sios[all]         # Everything
+```
 
-### 2 — Proof Protocol (CPO)
-Guarantees that every computation is reproducible and verifiable.
-Each execution produces a signed **Computational Proof Object** containing the code,
-parameters, result, execution environment, SHA-256 hash, Ed25519 signature, and node identity.
+---
 
-### 3 — Value Engine
-Automatically detects hidden economic value from the canonical transaction stream.
+## Why SIOS
 
-| Detector | What it finds |
+Most companies lose money silently:
+
+- **Forgotten SaaS subscriptions** — tools nobody uses, renewed automatically
+- **Duplicate vendor billing** — the same invoice paid twice in the same cycle
+- **Cloud environments running 24/7** — dev and staging never turned off
+- **One-time spikes never investigated** — a load test billed at full rate, forever forgotten
+
+SIOS detects these patterns automatically from raw transaction data.  
+Every result is backed by a confidence score, an evidence snapshot, and — when you need it — a cryptographic proof that the finding is reproducible and tamper-evident.
+
+**Install, run, recover value.**
+
+---
+
+## Use cases
+
+| User | How they use SIOS |
 |---|---|
-| `duplicate_payment` | Same vendor + similar amount within 30-day window |
-| `unused_subscription` | Recurring charges with no usage signal |
-| `cost_anomaly` | Transactions above the IQR statistical fence for their vendor |
-| `cloud_waste` | Dev environments, egress overcharges, underutilised reservations |
-| `tax_credit` *(roadmap)* | Eligible R&D, innovation, and employment credits |
-| `public_grant` *(roadmap)* | Matching grant programmes by activity and geography |
-| `renegotiable_contract` *(roadmap)* | Contracts above market rate based on spend benchmarks |
-| `telecom_overcharge` *(roadmap)* | Line charges inconsistent with contracted rates |
-| `unused_license` *(roadmap)* | Software seats with no login activity |
-
-Each detection produces a **Finding** with type, estimated amount, confidence, evidence, and recommended actions.
-
-### 4 — Proof of Value Creation (PVC)
-When a Finding is actually recovered, it becomes a verifiable record:
-```
-Finding (origin)
-  + Execution proof (CPO)
-  + Recovery proof (documents / on-chain data)
-  + Recovered amount
-  + Beneficiary
-  + Timestamp + Signature
-= PVC
-```
-
----
-
-## Quick start
-
-```bash
-git clone https://github.com/haynbroit-alt/cpo.git && cd cpo
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload
-```
-
-### Ingest transactions
-
-```bash
-curl -X POST http://localhost:8000/sios/ingest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": "csv",
-    "data": [
-      {"date":"2024-01-15","amount":299.00,"vendor":"Slack","description":"Slack Pro"},
-      {"date":"2024-02-15","amount":299.00,"vendor":"Slack","description":"Slack Pro"},
-      {"date":"2024-01-20","amount":1250.00,"vendor":"AWS","description":"EC2 dev-server"},
-      {"date":"2024-01-21","amount":1250.00,"vendor":"AWS","description":"EC2 dev-server"}
-    ]
-  }'
-```
-
-### Run detection
-
-```bash
-curl -X POST http://localhost:8000/sios/detect \
-  -H "Content-Type: application/json" -d '{}'
-
-# → {"new_findings": 2, "summary": {"total_estimated_amount": 1549.0, ...}}
-```
-
-### Retrieve a Finding
-
-```bash
-curl http://localhost:8000/sios/finding/<finding_id>
-
-# → {"type": "duplicate_payment", "estimated_amount": 1250.0, "confidence": 0.95, ...}
-```
-
-### Prove a computation (Proof Protocol)
-
-```bash
-curl -X POST http://localhost:8000/prove \
-  -H "Content-Type: application/json" \
-  -d '{"world":"symbolic","claim":"duplicate AWS charge confirmed","code":"print(1250.0 * 2)"}'
-```
-
-### Record a recovery (PVC)
-
-```bash
-curl -X POST http://localhost:8000/sios/recover \
-  -H "Content-Type: application/json" \
-  -d '{
-    "finding_id": "<finding_id>",
-    "recovered_amount": 1250.00,
-    "beneficiary": "acme-corp",
-    "cpo_id": "<cpo_id>",
-    "notes": "Duplicate AWS charge refunded by vendor"
-  }'
-```
-
----
-
-## Full API
-
-### SIOS Value Engine
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/sios/ingest` | Ingest JSON transaction array |
-| `POST` | `/sios/ingest/csv` | Ingest CSV file upload |
-| `POST` | `/sios/normalize` | Return canonical form of transactions |
-| `POST` | `/sios/detect` | Run all detectors → Findings |
-| `GET` | `/sios/finding/{id}` | Retrieve a Finding |
-| `GET` | `/sios/findings` | List findings (filter by status, type) |
-| `POST` | `/sios/recover` | Record a recovery → mint a PVC |
-| `GET` | `/sios/pvc/{id}` | Retrieve a PVC |
-| `GET` | `/sios/leaderboard` | PVCs ranked by recovered amount |
-
-### Proof Protocol
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/prove` | Execute code, return signed CPO |
-| `POST` | `/ask` | NL question → code → CPO |
-| `GET` | `/verify/{hash}` | Re-execute + verify CPO |
-| `GET` | `/cpo/{id}` | Retrieve CPO |
-| `GET` | `/ledger` | Browse append-only ledger |
-| `GET` | `/node` | Node identity + stats |
-| `POST` | `/attest/{hash}` | Peer attestation |
-| `GET` | `/cpo/{id}/attestations` | Quorum state |
-
----
-
-## Integrations
-
-```bash
-pip install langchain-cpo   # LangChain callback + chains
-pip install dspy-cpo        # DSPy module + predict wrapper
-```
-
-→ [`integrations/`](integrations/)
-
----
-
-## AXIOM — economic layer
-
-AXIOM is the agent scoring and capital allocation protocol built on top of PVC history.
-
-```
-AxiomScore(a) = PVCS_cumulative^α · R_identity^β · R_strategy^γ · (1 + VaR)^{-δ}
-```
-
-Used to: prioritise agents · allocate budgets · distribute rewards · compare performance.
-
-→ [`axiom/`](axiom/)
-
----
-
-## SIOS Swarm — voluntary P2P evolution network
-
-The Swarm is a consent-first P2P layer where **Spores** (verifiable programs) evolve through fitness-based natural selection.
-
-```
-Spore (code + lineage) → BEE sandbox → FitnessSignal → EvolutionEngine → child Spores
-```
-
-Every execution runs in the same CPO sandbox and produces a cryptographic proof.  
-Nodes join voluntarily; Spores propagate only between consenting peers.
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/sios/spore` | Submit a new Spore |
-| `GET` | `/sios/spore/{id}` | Retrieve a Spore |
-| `POST` | `/sios/spore/{id}/execute` | Execute in BEE sandbox, record fitness |
-| `POST` | `/sios/spore/{id}/rate` | Submit external fitness signal |
-| `GET` | `/sios/swarm/stats` | Population statistics |
-| `GET` | `/sios/swarm/top` | Top *n* Spores by fitness |
-| `POST` | `/sios/swarm/evolve` | Trigger selection + mutation cycle |
-| `GET` | `/sios/swarm/leaderboard` | All Spores ranked by fitness |
-| `DELETE` | `/sios/swarm` | Consent revocation — purge all Spores |
-
-**Mutation strategies:** cosmetic (lineage tracking) · parametric (±20% numeric perturbation) · LLM-guided (functional variation via Claude).
-
-→ [`sios/swarm/`](sios/swarm/)
-
----
-
-## Business model
-
-| Model | Description |
-|---|---|
-| Performance audit | Commission on amounts recovered |
-| Enterprise subscription | Continuous monitoring |
-| API access | Pay-per-call for integrators |
-| Marketplace | Revenue share with agent developers |
-| Enterprise private deploy | On-premise + compliance |
+| **Finance team** | Monthly audit of card statements and cloud bills |
+| **Engineering** | Post-incident cost review after infrastructure changes |
+| **Startup CFO** | SaaS spend audit before a funding round |
+| **Accountant / firm** | Client cost optimization as a service |
+| **SaaS vendor** | Embed duplicate billing detection into your own product |
 
 ---
 
 ## Roadmap
 
-**Phase 1 (0–6 months)**
-- [x] Proof Protocol (CPO) node — live on Render
-- [x] LangChain + DSPy adapters
-- [x] SIOS Core (ingestion + normalisation)
-- [x] Value Engine — duplicate, subscription, anomaly, cloud detectors
-- [x] Discovery Engine (DeepSight) — arXiv, PubMed, Wikipedia scanners
-- [x] SIOS Swarm — voluntary P2P evolutionary network with CPO-verified fitness
-- [ ] PyPI publish (`langchain-cpo`, `dspy-cpo`)
-- [ ] PDF / Excel ingestion (PaddleOCR)
-
-**Phase 2 (6–12 months)**
-- [ ] Connectors: Stripe, Pennylane, Sage, QuickBooks, Qonto, AWS, Azure
+- [x] CLI (`sios run`, `detect`, `prove`, `export`)
+- [x] Python SDK (`from sios import SIOS`)
+- [x] AWS Cost Explorer connector
+- [x] Stripe connector
+- [x] Verifiable proofs (CPO)
+- [x] PyPI package (`pip install sios`)
+- [ ] PDF / bank statement ingestion
+- [ ] Qonto, Pennylane, QuickBooks, Sage connectors
 - [ ] Continuous monitoring (scheduled detection)
-- [ ] Agent marketplace (submit + publish custom detectors)
-- [ ] Public ledger explorer
-
-**Phase 3 (12–24 months)**
-- [ ] PVC on-chain anchoring
-- [ ] AXIOM reputation + scoring
-- [ ] Automatic capital allocation
-- [ ] LlamaIndex + OpenTelemetry adapters
-
-**Phase 4 (24 months+)**
-- [ ] Third-party agent ecosystem
-- [ ] Open proof standard (multi-organisation)
-- [ ] Private enterprise deployments
-
----
-
-## Research
-
-- Proof Protocol formal treatment → [`paper/proof_protocol.tex`](paper/proof_protocol.tex)
-- AXIOM white paper → [`axiom/whitepaper/axiom_v1.tex`](axiom/whitepaper/axiom_v1.tex)
-
----
-
-## Project layout
-
-```
-sios/
-├── core/
-│   ├── models.py        # CanonicalTransaction, Finding, PVC
-│   └── ingestion.py     # CSV / JSON / Stripe adapters
-└── value_engine/
-    ├── base.py          # BaseDetector interface
-    ├── engine.py        # ValueEngine orchestrator
-    └── detectors/       # duplicate_payment, unused_subscription, cost_anomaly, cloud_waste
-
-app/                     # Proof Protocol FastAPI node
-integrations/            # langchain-cpo, dspy-cpo
-axiom/                   # AXIOM white paper + formal spec
-benchmarks/              # Latency + determinism suite
-paper/                   # Proof Protocol research paper
-```
+- [ ] Export to PDF audit report
+- [ ] Custom detector plugin API
 
 ---
 
 ## License
 
-MIT
+MIT — free to use, modify, and embed in commercial products.
+
+---
+
+*SIOS detects financial inefficiencies in structured data. We turn raw transactions into audited savings opportunities.*
