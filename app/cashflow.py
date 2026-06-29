@@ -371,6 +371,106 @@ def vault_page() -> HTMLResponse:
     return HTMLResponse(page.read_text() if page.exists() else "<h1>Vault not found</h1>")
 
 
+@app.get("/share/{audit_id}", response_class=HTMLResponse)
+def share_page(audit_id: str) -> HTMLResponse:
+    page = _STATIC_DIR / "proof-card.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Card not found</h1>")
+
+
+@app.get("/benchmark", response_class=HTMLResponse)
+def benchmark_page() -> HTMLResponse:
+    page = _STATIC_DIR / "benchmark.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Benchmark not found</h1>")
+
+
+@app.get("/trail", response_class=HTMLResponse)
+def trail_page() -> HTMLResponse:
+    page = _STATIC_DIR / "proof-trail.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Trail not found</h1>")
+
+
+@app.get("/live", response_class=HTMLResponse)
+def live_page() -> HTMLResponse:
+    page = _STATIC_DIR / "live-proof.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Live Proof not found</h1>")
+
+
+# ── Live Audit (free, no login, ≤50 rows) ─────────────────────────────────────
+
+_LIVE_MAX_BYTES = 1 * 1024 * 1024  # 1 MB
+_LIVE_MAX_ROWS = 50
+
+
+@app.post("/live-audit")
+async def live_audit(file: UploadFile) -> dict:
+    """Free synchronous mini-audit — no payment, no account.  Max 50 rows / 1 MB."""
+    if not file.filename or not file.filename.lower().endswith((".csv", ".json")):
+        raise HTTPException(400, "Seuls les fichiers .csv et .json sont acceptés")
+    content = await file.read()
+    if len(content) > _LIVE_MAX_BYTES:
+        raise HTTPException(413, "Fichier trop grand — 1 Mo maximum pour l'audit gratuit")
+
+    # Count rows for CSV (header not counted)
+    if file.filename.lower().endswith(".csv"):
+        import csv as _csv
+        import io as _io
+        try:
+            reader = _csv.reader(_io.StringIO(content.decode("utf-8", errors="replace")))
+            rows = list(reader)
+            data_rows = len(rows) - 1 if len(rows) > 1 else len(rows)
+        except Exception:
+            data_rows = 0
+        if data_rows > _LIVE_MAX_ROWS:
+            raise HTTPException(
+                422,
+                f"Fichier trop grand — {data_rows} lignes détectées, maximum {_LIVE_MAX_ROWS} pour l'audit gratuit"
+            )
+
+    suffix = ".json" if file.filename.lower().endswith(".json") else ".csv"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+        f.write(content)
+        tmp_path = f.name
+
+    try:
+        result = run_file(tmp_path)
+    except Exception as exc:
+        logger.error("Live audit error: %s", exc)
+        raise HTTPException(500, f"Erreur d'analyse : {exc}")
+    finally:
+        os.unlink(tmp_path)
+
+    sorted_findings = sorted(
+        result.findings,
+        key=lambda x: (x.trust_tier == "LOW", -(x.estimated_amount or 0)),
+    )
+    quantified_total = float(sum(
+        f.estimated_amount for f in result.findings
+        if f.trust_tier in ("MEDIUM", "HIGH") and f.estimated_amount
+    ))
+
+    return {
+        "status": "done",
+        "transactions_analyzed": result.dataset_rows,
+        "findings_count": len(result.findings),
+        "total_detected": round(quantified_total, 2),
+        "currency": result.currency,
+        "findings": [
+            {
+                "type": f.type.value,
+                "title": f.title,
+                "description": f.description,
+                "estimated_amount": f.estimated_amount,
+                "currency": f.currency,
+                "trust_tier": f.trust_tier,
+                "trust_score": f.trust_score,
+                "estimate_low": f.estimate_low,
+                "estimate_high": f.estimate_high,
+            }
+            for f in sorted_findings
+        ],
+    }
+
+
 # ── Upload ─────────────────────────────────────────────────────────────────────
 
 @app.post("/upload")

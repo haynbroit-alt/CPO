@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIOS — Benchmark Sectoriel</title>
+  <meta name="description" content="Comparez votre taux d'anomalies avec votre secteur. Basé sur des audits réels vérifiés.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    nav {
+      border-bottom: 1px solid #eee;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    .nav-logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
+    .nav-links { display: flex; gap: 24px; font-size: 0.88rem; color: #555; }
+    .nav-links a:hover { color: #1a1a1a; }
+    .nav-links a.active { color: #1a1a1a; font-weight: 600; }
+    .nav-cta { margin-left: auto; padding: 7px 18px; background: #1a1a1a; color: #fff; border-radius: 7px; font-size: 0.85rem; font-weight: 600; }
+
+    .page { max-width: 820px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    .hero-eyebrow { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 10px; }
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; }
+    .hero-sub { color: #555; font-size: 1rem; margin-bottom: 40px; max-width: 520px; }
+
+    /* ── Sector overview grid ───────────────────────────────────── */
+    .section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 16px; }
+
+    .sector-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 56px;
+    }
+    .sector-card {
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sector-card:hover, .sector-card.selected { border-color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .sector-card.selected { background: #1a1a1a; color: #fff; }
+    .sector-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+    .sector-stat { font-size: 0.8rem; opacity: 0.7; }
+    .sector-stat strong { opacity: 1; font-weight: 700; }
+
+    /* ── Comparator ─────────────────────────────────────────────── */
+    .comparator {
+      border: 1.5px solid #1a1a1a;
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 40px;
+    }
+    .comparator h2 { font-size: 1rem; font-weight: 700; margin-bottom: 20px; }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 480px) { .input-row { grid-template-columns: 1fr; } }
+
+    .input-group label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-group input:focus, .input-group select:focus { border-color: #1a1a1a; }
+
+    .compare-btn {
+      padding: 12px 28px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .compare-btn:hover { background: #333; }
+    .compare-btn:disabled { background: #999; cursor: not-allowed; }
+
+    /* ── Comparison result ───────────────────────────────────────── */
+    .comparison-result {
+      margin-top: 24px;
+      display: none;
+    }
+    .comparison-result.show { display: block; }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 520px) { .result-grid { grid-template-columns: 1fr; } }
+
+    .result-metric { display: flex; flex-direction: column; gap: 2px; }
+    .result-val { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; }
+    .result-val.red { color: #dc2626; }
+    .result-val.green { color: #16a34a; }
+    .result-val.blue { color: #2563eb; }
+    .result-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
+
+    .risk-banner {
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+    .risk-high { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .risk-elevated { background: #fefce8; border: 1px solid #fde68a; color: #92400e; }
+    .risk-normal { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+
+    .savings-estimate {
+      padding: 16px 20px;
+      background: #f7f7f7;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .savings-estimate .label { font-size: 0.88rem; color: #555; }
+    .savings-estimate .value { font-size: 1.15rem; font-weight: 800; }
+
+    .cta-block { margin-top: 20px; }
+    .cta-block a {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+    }
+    .cta-block a:hover { background: #333; }
+
+    /* ── Sector detail ────────────────────────────────────────────── */
+    .sector-detail { margin-top: 40px; display: none; }
+    .sector-detail.show { display: block; }
+
+    .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 520px) { .detail-grid { grid-template-columns: 1fr 1fr; } }
+    .detail-metric { display: flex; flex-direction: column; gap: 2px; }
+    .detail-val { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
+    .detail-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
+
+    .anomaly-types { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .type-chip {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      background: #f0f0f0;
+      border-radius: 100px;
+      color: #555;
+    }
+
+    footer { border-top: 1px solid #eee; text-align: center; padding: 32px; color: #aaa; font-size: 0.82rem; }
+    footer a { color: #888; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">SIOS</a>
+  <div class="nav-links">
+    <a href="/">Accueil</a>
+    <a href="/gallery">Proof Gallery</a>
+    <a href="/benchmark" class="active">Benchmark</a>
+    <a href="/trail">Proof Trail</a>
+  </div>
+  <a href="/" class="nav-cta">Lancer un audit →</a>
+</nav>
+
+<div class="page">
+  <div class="hero-eyebrow">Benchmark Sectoriel</div>
+  <h1>Vous vs. votre secteur</h1>
+  <p class="hero-sub">Basé sur des audits réels vérifiés. Aucune estimation marketing — uniquement des données confirmées.</p>
+
+  <!-- Sector overview -->
+  <div class="section-title">Secteurs disponibles</div>
+  <div class="sector-grid" id="sector-grid">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- Comparator tool -->
+  <div class="comparator" id="comparator">
+    <h2>Comparez votre situation</h2>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Votre secteur</label>
+        <select id="sector-select">
+          <option value="">Choisir un secteur…</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Transactions / mois</label>
+        <input type="number" id="txn-count" placeholder="ex: 500" min="1" value="">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Anomalies détectées</label>
+        <input type="number" id="anomaly-count" placeholder="ex: 12" min="0" value="">
+      </div>
+      <div class="input-group">
+        <label>Taux d'anomalies (%)</label>
+        <input type="number" id="anomaly-rate" placeholder="calculé auto" step="0.01" readonly style="background:#f7f7f7">
+      </div>
+    </div>
+    <button class="compare-btn" id="compare-btn" onclick="runComparison()">Comparer avec le secteur</button>
+
+    <div class="comparison-result" id="comparison-result">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- Sector detail -->
+  <div class="sector-detail" id="sector-detail">
+    <!-- filled by JS -->
+  </div>
+
+</div>
+
+<footer>
+  SIOS — Financial Audit Engine ·
+  <a href="/gallery">Proof Gallery</a> ·
+  <a href="/trail">Proof Trail</a>
+</footer>
+
+<script>
+const ANOMALY_LABELS = {
+  duplicate_payment: 'Doublon de paiement',
+  unused_subscription: 'Abonnement inutilisé',
+  unused_license: 'Licence inutilisée',
+  cloud_waste: 'Cloud waste',
+  cost_anomaly: 'Anomalie de coût',
+  telecom_overcharge: 'Surcharge télécom',
+  renegotiable_contract: 'Contrat renégociable',
+};
+
+let benchmarks = [];
+let selectedSector = '';
+
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+function fmtNum(n) {
+  return new Intl.NumberFormat('fr-FR').format(n);
+}
+
+// Auto-calculate anomaly rate
+['txn-count', 'anomaly-count'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const txns = parseFloat(document.getElementById('txn-count').value) || 0;
+    const anomalies = parseFloat(document.getElementById('anomaly-count').value) || 0;
+    if (txns > 0) {
+      document.getElementById('anomaly-rate').value = (anomalies / txns * 100).toFixed(2);
+    }
+  });
+});
+
+function selectSector(sector) {
+  selectedSector = sector;
+  document.getElementById('sector-select').value = sector;
+  document.querySelectorAll('.sector-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.sector === sector);
+  });
+  showSectorDetail(sector);
+}
+
+function showSectorDetail(sector) {
+  const b = benchmarks.find(b => b.sector === sector);
+  if (!b) return;
+
+  const detail = document.getElementById('sector-detail');
+  detail.className = 'sector-detail show';
+  detail.innerHTML = `
+    <div class="section-title">Données secteur — ${b.sector} (${b.audit_count} audit${b.audit_count > 1 ? 's' : ''} vérifiés)</div>
+    <div class="detail-grid">
+      <div class="detail-metric">
+        <span class="detail-val">${b.avg_anomaly_rate_pct}%</span>
+        <span class="detail-label">Taux d'anomalie moyen</span>
+      </div>
+      <div class="detail-metric">
+        <span class="detail-val">${fmt(b.avg_savings_eur)}</span>
+        <span class="detail-label">Économies moy. / audit</span>
+      </div>
+      <div class="detail-metric">
+        <span class="detail-val">${fmt(b.max_savings_eur)}</span>
+        <span class="detail-label">Max confirmé</span>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:16px">Anomalies les plus fréquentes</div>
+    <div class="anomaly-types">
+      ${b.top_anomaly_types.map(t => `<span class="type-chip">${ANOMALY_LABELS[t] || t}</span>`).join('')}
+    </div>
+    <div class="section-title" style="margin-top:16px">Vendeurs les plus signalés</div>
+    <div class="anomaly-types">
+      ${b.top_vendors.map(v => `<span class="type-chip">${v}</span>`).join('')}
+    </div>
+    <p style="margin-top:20px"><a href="/gallery?sector=${encodeURIComponent(b.sector)}" style="font-size:0.85rem;color:#555;border-bottom:1px solid #ddd">Voir les audits ${b.sector} →</a></p>
+  `;
+}
+
+async function runComparison() {
+  const sector = document.getElementById('sector-select').value;
+  const rate = parseFloat(document.getElementById('anomaly-rate').value);
+  const txns = parseInt(document.getElementById('txn-count').value) || 1000;
+
+  if (!sector) { alert('Sélectionnez un secteur.'); return; }
+  if (isNaN(rate)) { alert('Saisissez le nombre de transactions et d\'anomalies.'); return; }
+
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = true;
+  btn.textContent = 'Analyse…';
+
+  try {
+    const r = await fetch(`/proofs/benchmark/${encodeURIComponent(sector)}/compare?anomaly_rate=${rate}&transactions=${txns}`);
+    const d = await r.json();
+
+    const riskClass = { high: 'risk-high', elevated: 'risk-elevated', normal: 'risk-normal' }[d.risk_level] || 'risk-normal';
+    const riskMsg = {
+      high: `⚠️ Votre taux est <strong>${d.delta_pct > 0 ? '+' : ''}${d.delta_pct}%</strong> au-dessus de la moyenne. Vous êtes dans le top ${100 - d.percentile}% des entreprises les plus exposées.`,
+      elevated: `Votre taux est légèrement au-dessus de la moyenne sectorielle (<strong>+${d.delta_pct}%</strong>). Des économies sont probables.`,
+      normal: `✓ Votre taux d'anomalies est <strong>inférieur à la moyenne sectorielle</strong>. Bonne maîtrise des coûts.`,
+    }[d.risk_level];
+
+    document.getElementById('comparison-result').className = 'comparison-result show';
+    document.getElementById('comparison-result').innerHTML = `
+      <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+      <div class="result-grid">
+        <div class="result-metric">
+          <span class="result-val ${d.risk_level === 'normal' ? 'green' : 'red'}">${d.user_anomaly_rate_pct}%</span>
+          <span class="result-label">Votre taux</span>
+        </div>
+        <div class="result-metric">
+          <span class="result-val blue">${d.sector_avg_rate_pct}%</span>
+          <span class="result-label">Moyenne ${d.sector}</span>
+        </div>
+        <div class="result-metric">
+          <span class="result-val">${d.percentile}e</span>
+          <span class="result-label">Percentile secteur</span>
+        </div>
+      </div>
+
+      <div class="risk-banner ${riskClass}">${riskMsg}</div>
+
+      <div class="savings-estimate">
+        <span class="label">Économies potentielles estimées</span>
+        <span class="value">${fmt(d.estimated_savings_low)} – ${fmt(d.estimated_savings_high)}</span>
+      </div>
+
+      <div class="cta-block">
+        <a href="/">Lancer votre audit SIOS →</a>
+      </div>
+    `;
+
+    selectSector(sector);
+  } catch(e) {
+    document.getElementById('comparison-result').className = 'comparison-result show';
+    document.getElementById('comparison-result').innerHTML = '<p style="color:#888">Erreur lors de la comparaison.</p>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Comparer avec le secteur';
+  }
+}
+
+async function loadBenchmarks() {
+  try {
+    const r = await fetch('/proofs/benchmark');
+    const d = await r.json();
+    benchmarks = d.sectors;
+
+    // Fill sector grid
+    const grid = document.getElementById('sector-grid');
+    grid.innerHTML = benchmarks.map(b => `
+      <div class="sector-card" data-sector="${b.sector}" onclick="selectSector('${b.sector}')">
+        <div class="sector-name">${b.sector}</div>
+        <div class="sector-stat">Taux moy. : <strong>${b.avg_anomaly_rate_pct}%</strong></div>
+        <div class="sector-stat">Moy. confirmé : <strong>${new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(b.avg_savings_eur)}</strong></div>
+        <div class="sector-stat">${b.audit_count} audit${b.audit_count > 1 ? 's' : ''}</div>
+      </div>
+    `).join('');
+
+    // Fill sector select
+    const sel = document.getElementById('sector-select');
+    benchmarks.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.sector;
+      opt.textContent = b.sector;
+      sel.appendChild(opt);
+    });
+
+    // Pre-select from URL param
+    const params = new URLSearchParams(window.location.search);
+    const paramSector = params.get('sector');
+    if (paramSector) selectSector(paramSector);
+
+  } catch(e) {
+    document.getElementById('sector-grid').innerHTML = '<p style="color:#888">Erreur de chargement.</p>';
+  }
+}
+
+loadBenchmarks();
+</script>
+
+</body>
+</html>

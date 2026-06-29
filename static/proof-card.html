@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title id="page-title">SIOS — Audit vérifié</title>
+  <meta id="og-title" property="og:title" content="SIOS — Audit vérifié">
+  <meta id="og-desc" property="og:description" content="Économies prouvées, reproductibles, auditables.">
+  <meta property="og:type" content="website">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #f7f7f7;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Card ─────────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border: 1.5px solid #1a1a1a;
+      border-radius: 16px;
+      padding: 32px 36px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 4px 4px 0 #1a1a1a;
+    }
+
+    .card-logo {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-logo .shield { font-size: 1rem; }
+
+    .audit-id {
+      font-size: 0.78rem;
+      color: #888;
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .sector-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: #f0f0f0;
+      color: #555;
+      padding: 2px 8px;
+      border-radius: 100px;
+      margin-left: 8px;
+    }
+
+    .savings-block {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .savings-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #166534; margin-bottom: 4px; }
+    .savings-amount { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.04em; color: #15803d; }
+
+    .anomalies { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+    .anomaly-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: #444;
+    }
+    .anomaly-check { color: #16a34a; font-weight: 700; }
+    .anomaly-amount { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; color: #1a1a1a; }
+
+    .meta-line {
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .meta-line strong { color: #555; }
+
+    .proof-hash {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 16px 0;
+      padding: 10px 14px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.72rem;
+      color: #9ca3af;
+    }
+    .proof-hash .hash-label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.65rem; }
+    .proof-hash .hash-val { color: #d1fae5; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+      margin-bottom: 16px;
+    }
+    .badge-client { background: #dcfce7; color: #166534; }
+    .badge-internal { background: #fef9c3; color: #854d0e; }
+    .badge-reproducible { background: #dbeafe; color: #1d4ed8; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      flex: 1;
+      padding: 11px 18px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #333; }
+    .btn-secondary {
+      flex: 1;
+      padding: 11px 18px;
+      background: #fff;
+      color: #1a1a1a;
+      border: 1.5px solid #1a1a1a;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: #f5f5f5; }
+
+    /* Share bar */
+    .share-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      align-items: center;
+    }
+    .share-url-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      background: #f7f7f7;
+      color: #555;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .copy-btn {
+      padding: 8px 14px;
+      border: 1.5px solid #1a1a1a;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: #fff;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: #f0f0f0; }
+
+    /* Footer */
+    .card-footer {
+      margin-top: 20px;
+      font-size: 0.72rem;
+      color: #bbb;
+      text-align: center;
+    }
+    .card-footer a { color: #aaa; }
+
+    /* Loading / error */
+    .state-msg { text-align: center; padding: 40px; color: #888; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="state-msg" id="loading">Chargement…</div>
+</div>
+
+<script>
+const ANOMALY_LABELS = {
+  duplicate_payment: 'Doublon de paiement',
+  unused_subscription: 'Abonnement inutilisé',
+  unused_license: 'Licence inutilisée',
+  cloud_waste: 'Cloud waste',
+  cost_anomaly: 'Anomalie de coût',
+  telecom_overcharge: 'Surcharge télécom',
+  renegotiable_contract: 'Contrat renégociable',
+};
+
+const BADGE_CONFIG = {
+  client_verified:   { cls: 'badge-client',       label: '✔ Validé client' },
+  internal_only:     { cls: 'badge-internal',     label: '~ Validé interne' },
+  reproducible_only: { cls: 'badge-reproducible', label: '⟳ Reproductible' },
+};
+
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+
+function getAuditId() {
+  const parts = window.location.pathname.split('/');
+  return parts[parts.length - 1] || parts[parts.length - 2];
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    const btn = document.getElementById('copy-btn');
+    if (btn) { btn.textContent = 'Copié !'; setTimeout(() => btn.textContent = 'Copier le lien', 1800); }
+  } catch(e) {}
+}
+
+async function replayAudit(auditId) {
+  const btn = document.getElementById('replay-btn');
+  btn.textContent = 'Rejeu…';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/proofs/${auditId}/replay`, { method: 'POST' });
+    const d = await r.json();
+    btn.textContent = d.result === 'exact_match' ? '✔ Reproductible confirmé' : '⚠ Drift détecté';
+  } catch(e) {
+    btn.textContent = 'Erreur';
+  }
+  btn.disabled = false;
+}
+
+function renderCard(d) {
+  const badge = BADGE_CONFIG[d.verification_badge] || BADGE_CONFIG.reproducible_only;
+  const savings = d.confirmed_savings_eur ?? d.estimated_savings_eur;
+  const savingsLabel = d.confirmed_savings_eur != null ? 'ÉCONOMIES CONFIRMÉES' : 'ÉCONOMIES ESTIMÉES';
+
+  document.title = `SIOS — Audit #${String(d.audit_number).padStart(4,'0')} · ${fmt(savings)}`;
+
+  document.getElementById('card').innerHTML = `
+    <div class="card-logo"><span class="shield">🛡️</span> SIOS Verified Audit</div>
+
+    <div>
+      <span class="audit-id">AUDIT #${String(d.audit_number).padStart(4,'0')}</span>
+      <span class="sector-tag">${d.sector}</span>
+    </div>
+
+    <div class="savings-block">
+      <div class="savings-label">${savingsLabel}</div>
+      <div class="savings-amount">${fmt(savings)}</div>
+    </div>
+
+    <div class="anomalies">
+      ${d.top_anomalies.map(an => `
+        <div class="anomaly-row">
+          <span class="anomaly-check">✓</span>
+          <span>${ANOMALY_LABELS[an.type] || an.type} — ${an.vendor}</span>
+          <span class="anomaly-amount">${fmt(an.amount)}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="meta-line">Transactions analysées : <strong>${d.transactions_analyzed.toLocaleString('fr-FR')}</strong></div>
+    <div class="meta-line">Anomalies détectées : <strong>${d.anomalies_detected}</strong></div>
+
+    <div class="proof-hash">
+      <span class="hash-label">Hash dataset :</span>
+      <span class="hash-val">${d.dataset_hash}…</span>
+    </div>
+
+    <div><span class="badge ${badge.cls}">${badge.label}</span></div>
+
+    <div class="actions">
+      <a href="/audit/${d.id}" class="btn-primary">Voir l'audit complet</a>
+      <button class="btn-secondary" id="replay-btn" onclick="replayAudit('${d.id}')">Rejouer l'audit</button>
+    </div>
+
+    <div class="share-bar">
+      <div class="share-url-input">${window.location.href}</div>
+      <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copier le lien</button>
+    </div>
+
+    <div class="card-footer">
+      Audit vérifiable · <a href="/gallery">Voir tous les audits</a> · <a href="/">Lancer votre audit</a>
+    </div>
+  `;
+}
+
+async function loadCard() {
+  const auditId = getAuditId();
+  if (!auditId) {
+    document.getElementById('card').innerHTML = '<div class="state-msg">Identifiant manquant.</div>';
+    return;
+  }
+  try {
+    const r = await fetch(`/proofs/${auditId}/card`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    renderCard(await r.json());
+  } catch(e) {
+    document.getElementById('card').innerHTML = `<div class="state-msg">Audit introuvable.<br><a href="/gallery" style="color:#555;text-decoration:underline">← Retour gallery</a></div>`;
+  }
+}
+
+loadCard();
+</script>
+
+</body>
+</html>

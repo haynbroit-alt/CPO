@@ -6,8 +6,10 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from sios.proof_layer.benchmark import all_sector_benchmarks, compare_to_sector, sector_benchmark
 from sios.proof_layer.models import AnomalyType, VerificationLevel
 from sios.proof_layer.seed import gallery_stats, get_seed_audits
+from sios.proof_layer.trail import get_trail, get_trail_entry
 
 router = APIRouter(prefix="/proofs", tags=["Proof Layer"])
 
@@ -160,16 +162,67 @@ def list_proofs(
     }
 
 
-@router.get("/{audit_id}")
-def get_proof(audit_id: str) -> Dict:
-    """Full audit detail including Truth Stack, timeline, and artifacts."""
-    a = _AUDITS.get(audit_id)
-    if a is None:
-        raise HTTPException(status_code=404, detail="Audit not found")
-    if not a.is_public:
-        raise HTTPException(status_code=403, detail="This audit requires authentication")
-    return _audit_to_full(a)
+# ---------------------------------------------------------------------------
+# Benchmark endpoints  (must come before /{audit_id} to avoid wildcard capture)
+# ---------------------------------------------------------------------------
 
+@router.get("/benchmark")
+def list_benchmarks() -> Dict:
+    """Sector benchmarks across all sectors with public audit data."""
+    return {
+        "sectors": all_sector_benchmarks(),
+    }
+
+
+@router.get("/benchmark/{sector}/compare")
+def compare_benchmark(
+    sector: str,
+    anomaly_rate: float = Query(..., description="Your anomaly rate in percent (anomalies / transactions * 100)"),
+    transactions: int = Query(1000, description="Your transaction count"),
+) -> Dict:
+    """Compare a company's anomaly rate against sector peers."""
+    result = compare_to_sector(sector, anomaly_rate, transactions)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/benchmark/{sector}")
+def get_benchmark(sector: str) -> Dict:
+    """Benchmark data for a specific sector."""
+    b = sector_benchmark(sector)
+    if b is None:
+        raise HTTPException(status_code=404, detail=f"No benchmark data for sector: {sector}")
+    return b
+
+
+# ---------------------------------------------------------------------------
+# Proof Trail endpoints  (must come before /{audit_id})
+# ---------------------------------------------------------------------------
+
+@router.get("/trail")
+def list_trail(
+    anomaly_type: Optional[str] = Query(None),
+    sector: Optional[str] = Query(None),
+    limit: int = Query(50, le=200),
+    offset: int = Query(0, ge=0),
+) -> Dict:
+    """Stream of confirmed recovery events — the Proof Trail."""
+    return get_trail(limit=limit, offset=offset, anomaly_type=anomaly_type, sector=sector)
+
+
+@router.get("/trail/{entry_id}")
+def get_trail_item(entry_id: str) -> Dict:
+    """Single Proof Trail entry — one confirmed recovery."""
+    entry = get_trail_entry(entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Trail entry not found")
+    return entry
+
+
+# ---------------------------------------------------------------------------
+# Per-audit endpoints  (parameterized — keep after all fixed-path routes)
+# ---------------------------------------------------------------------------
 
 @router.get("/{audit_id}/artifacts")
 def get_artifacts(audit_id: str) -> Dict:
@@ -218,3 +271,48 @@ def replay_audit(audit_id: str) -> Dict:
         "model_version": a.detection.model_version,
         "message": f"Audit #{a.audit_number} is fully reproducible. Dataset hash and detection output match exactly.",
     }
+
+
+@router.get("/{audit_id}/card")
+def get_proof_card(audit_id: str) -> Dict:
+    """Minimal shareable card data for a verified audit."""
+    a = _AUDITS.get(audit_id)
+    if a is None:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    badge_label = {
+        "client_verified": "Validé client",
+        "internal_only": "Validé interne",
+        "reproducible_only": "Reproductible",
+    }.get(a.verification_badge, "Vérifié")
+    return {
+        "id": a.id,
+        "audit_number": a.audit_number,
+        "sector": a.sector,
+        "transactions_analyzed": a.transactions_analyzed,
+        "anomalies_detected": a.anomalies_detected,
+        "estimated_savings_eur": a.estimated_savings_eur,
+        "confirmed_savings_eur": a.confirmed_savings_eur,
+        "dataset_hash": a.raw_data.dataset_hash[:16],
+        "detection_hash": a.detection.detection_hash[:16],
+        "model_version": a.detection.model_version,
+        "verification_badge": a.verification_badge,
+        "badge_label": badge_label,
+        "top_anomalies": [
+            {"type": an.type.value, "vendor": an.vendor, "amount": an.confirmed_amount or an.estimated_amount}
+            for an in sorted(a.anomalies, key=lambda x: x.estimated_amount, reverse=True)[:3]
+        ],
+        "share_url": f"/share/{a.id}",
+        "audit_url": f"/audit/{a.id}",
+        "replay_url": f"/proofs/{a.id}/replay",
+    }
+
+
+@router.get("/{audit_id}")
+def get_proof(audit_id: str) -> Dict:
+    """Full audit detail including Truth Stack, timeline, and artifacts."""
+    a = _AUDITS.get(audit_id)
+    if a is None:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    if not a.is_public:
+        raise HTTPException(status_code=403, detail="This audit requires authentication")
+    return _audit_to_full(a)

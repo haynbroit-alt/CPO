@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIOS — Proof Trail</title>
+  <meta name="description" content="Chaque anomalie résolue. Chaque euro récupéré. En temps réel.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    nav {
+      border-bottom: 1px solid #eee;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    .nav-logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
+    .nav-links { display: flex; gap: 24px; font-size: 0.88rem; color: #555; }
+    .nav-links a:hover { color: #1a1a1a; }
+    .nav-links a.active { color: #1a1a1a; font-weight: 600; }
+    .nav-cta { margin-left: auto; padding: 7px 18px; background: #1a1a1a; color: #fff; border-radius: 7px; font-size: 0.85rem; font-weight: 600; }
+
+    .page { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    .hero-eyebrow { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 10px; }
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; }
+    .hero-sub { color: #555; font-size: 1rem; margin-bottom: 32px; max-width: 500px; }
+
+    /* ── Running total ───────────────────────────────────────────── */
+    .total-banner {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 20px 24px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+    .total-amount { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; color: #15803d; }
+    .total-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: #166534; }
+    .total-count { font-size: 0.88rem; color: #555; }
+
+    /* ── Filters ─────────────────────────────────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .filter-chip {
+      padding: 5px 14px;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      font-family: inherit;
+      color: #555;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .filter-chip:hover { border-color: #999; }
+    .filter-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+    /* ── Trail entries ───────────────────────────────────────────── */
+    .trail-list { display: flex; flex-direction: column; gap: 0; }
+
+    .trail-entry {
+      border-bottom: 1px solid #f0f0f0;
+      padding: 16px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      transition: background 0.1s;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .trail-entry:hover { background: #fafafa; padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
+    .trail-entry:first-child { border-top: 1px solid #f0f0f0; }
+
+    .trail-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #15803d;
+      flex-shrink: 0;
+    }
+
+    .trail-content { flex: 1; min-width: 0; }
+    .trail-headline { font-size: 0.92rem; color: #1a1a1a; margin-bottom: 2px; line-height: 1.4; }
+    .trail-meta { font-size: 0.78rem; color: #888; display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .trail-amount {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #16a34a;
+      white-space: nowrap;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .type-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 100px;
+      background: #f0f0f0;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Empty ───────────────────────────────────────────────────── */
+    .empty { text-align: center; padding: 40px; color: #888; font-size: 0.9rem; }
+
+    footer { border-top: 1px solid #eee; text-align: center; padding: 32px; color: #aaa; font-size: 0.82rem; }
+    footer a { color: #888; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">SIOS</a>
+  <div class="nav-links">
+    <a href="/">Accueil</a>
+    <a href="/gallery">Proof Gallery</a>
+    <a href="/benchmark">Benchmark</a>
+    <a href="/trail" class="active">Proof Trail</a>
+  </div>
+  <a href="/" class="nav-cta">Lancer un audit →</a>
+</nav>
+
+<div class="page">
+  <div class="hero-eyebrow">Proof Trail</div>
+  <h1>Chaque euro récupéré.</h1>
+  <p class="hero-sub">Un flux continu de preuves. Chaque ligne est une anomalie résolue — confirmée, signée, vérifiable.</p>
+
+  <div class="total-banner">
+    <div>
+      <div class="total-amount" id="total-amount">—</div>
+      <div class="total-label">Total confirmé</div>
+    </div>
+    <div class="total-count" id="total-count">— résolutions enregistrées</div>
+  </div>
+
+  <div class="filter-row" id="filter-row">
+    <button class="filter-chip active" data-type="" onclick="setFilter('',this)">Tous</button>
+    <button class="filter-chip" data-type="duplicate_payment" onclick="setFilter('duplicate_payment',this)">Doublons</button>
+    <button class="filter-chip" data-type="unused_subscription" onclick="setFilter('unused_subscription',this)">Abonnements</button>
+    <button class="filter-chip" data-type="unused_license" onclick="setFilter('unused_license',this)">Licences</button>
+    <button class="filter-chip" data-type="cloud_waste" onclick="setFilter('cloud_waste',this)">Cloud</button>
+    <button class="filter-chip" data-type="renegotiable_contract" onclick="setFilter('renegotiable_contract',this)">Contrats</button>
+    <button class="filter-chip" data-type="telecom_overcharge" onclick="setFilter('telecom_overcharge',this)">Télécom</button>
+  </div>
+
+  <div class="trail-list" id="trail-list">
+    <div class="empty">Chargement…</div>
+  </div>
+</div>
+
+<footer>
+  SIOS — Financial Audit Engine ·
+  <a href="/gallery">Proof Gallery</a> ·
+  <a href="/benchmark">Benchmark</a>
+</footer>
+
+<script>
+const ANOMALY_LABELS = {
+  duplicate_payment: 'Doublon',
+  unused_subscription: 'Abonnement inutilisé',
+  unused_license: 'Licence inutilisée',
+  cloud_waste: 'Cloud waste',
+  cost_anomaly: 'Anomalie coût',
+  telecom_overcharge: 'Télécom',
+  renegotiable_contract: 'Contrat',
+};
+
+let currentType = '';
+
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function setFilter(type, el) {
+  currentType = type;
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadTrail();
+}
+
+function renderEntries(entries) {
+  const list = document.getElementById('trail-list');
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty">Aucune résolution pour ce filtre.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => `
+    <div class="trail-entry" onclick="location.href='/audit/${e.audit_id}'">
+      <div class="trail-icon">€</div>
+      <div class="trail-content">
+        <div class="trail-headline">${e.headline}</div>
+        <div class="trail-meta">
+          <span>${fmtDate(e.recovered_at)}</span>
+          <span class="type-badge">${ANOMALY_LABELS[e.anomaly_type] || e.anomaly_type}</span>
+          <span>Audit #${String(e.audit_number).padStart(4,'0')}</span>
+          <span style="font-family:monospace;font-size:0.7rem;color:#bbb">${e.dataset_hash}…</span>
+        </div>
+      </div>
+      <div class="trail-amount">${fmt(e.confirmed_amount)}</div>
+    </div>
+  `).join('');
+}
+
+async function loadTrail() {
+  const url = `/proofs/trail?limit=100${currentType ? '&anomaly_type=' + currentType : ''}`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+
+    document.getElementById('total-amount').textContent =
+      new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(d.total_recovered_eur);
+    document.getElementById('total-count').textContent =
+      `${d.total} résolution${d.total > 1 ? 's' : ''} enregistrée${d.total > 1 ? 's' : ''}`;
+
+    renderEntries(d.entries);
+  } catch(e) {
+    document.getElementById('trail-list').innerHTML = '<div class="empty">Erreur de chargement.</div>';
+  }
+}
+
+loadTrail();
+</script>
+
+</body>
+</html>
