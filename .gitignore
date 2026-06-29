@@ -16,3 +16,5 @@ paper/*.out
 paper/*.toc
 reports/
 sios.db
+sios.db-shm
+sios.db-wal
