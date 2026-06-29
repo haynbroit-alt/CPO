@@ -1,37 +1,44 @@
-# SIOS — Financial Audit Engine
+# SIOS — Financial Anomaly Detection + Audit Proof
 
-> Detect hidden financial losses in your transaction data. Every finding is reproducible and cryptographically signed.
+> Detect financial inefficiency patterns in your transaction data. Every finding is probabilistically scored and cryptographically signed.
 
 ```
 pip install sios
-sios run examples/sample.csv
+sios run transactions.csv
 ```
 
 ```
 ────────────────────────────────────────────────────────
-  SIOS Audit — sample.csv
-  21 transactions analyzed
+  SIOS Audit — transactions.csv
+  312 transactions · 6 months
 ────────────────────────────────────────────────────────
 
-  [Duplicate payment]        1,195 EUR  conf: 95%
-  Duplicate AWS charge — EC2 Production (Feb)
+  [Cloud waste]                   HIGH · conf: 81%
+  AWS — non-production environments running continuously
+  Observed: €12,600 over 6 months
+  Estimated savings: €1,260 – €3,780 / year
 
-  [Cost anomaly]             7,650 EUR  conf: 72%
-  AWS spike vs. baseline — load test environment (Feb 14)
+  [Unused subscription]         MEDIUM · conf: 62%
+  Slack Pro — recurring charges, no usage correlation
+  Observed: €1,794 over 6 months
+  Estimated savings: €90 – €360 / year
 
-  [Unused subscription]        588 EUR  conf: 80%
-  GitHub Teams — 3 recurring charges, no usage signal
+  [Cost anomaly]                MEDIUM · conf: 58%
+  AWS spike — €8,900 on 2024-01-15, no recurrence
+  Observed: single event · signal for investigation
 
-  [Cloud waste]                522 EUR  conf: 65%
-  EC2 dev environments running 24/7 across 3 months
+  [Duplicate payment]             HIGH · conf: 94%
+  Vendor: Datadog · same amount billed twice (Jan 8–9)
+  Observed: €1,195 · recoverable in full
 
 ────────────────────────────────────────────────────────
-  Estimated recoverable: 31,121 EUR
-  Findings: 12
+  Quantified estimate: €2,545 – €5,335
+  Signals (more data needed): 1
+  Findings: 4 · CPO: a83f2c91d4e7...
 ────────────────────────────────────────────────────────
 ```
 
-**One dataset → one audit → one proof.**
+**One dataset → one audit → one verifiable proof.**
 
 ---
 
@@ -62,16 +69,30 @@ sios export transactions.csv --out report.json
 
 ---
 
+## Trust tiers
+
+Results are scored by a trust engine that evaluates dataset size, signal consistency, and temporal coverage:
+
+| Trust tier | Dataset | Output |
+|---|---|---|
+| **LOW** | < 50 transactions | Signal only — pattern detected, no € estimate |
+| **MEDIUM** | 50–200 transactions | Range estimate — low/high confidence interval |
+| **HIGH** | 200+ transactions | Quantified estimate — statistically grounded |
+
+**Important:** SIOS outputs are probabilistic pattern detections, not verified financial statements. They do not replace an accountant or a legal audit. Use them as a starting point for investigation.
+
+---
+
 ## What SIOS detects
 
-| Finding type | Description | Typical recovery |
-|---|---|---|
-| `duplicate_payment` | Same vendor + similar amount within 7 days | Full refund |
-| `unused_subscription` | Recurring charges with no counterpart activity | Cancel or renegotiate |
-| `cost_anomaly` | Statistically abnormal spend (IQR fence per vendor) | Investigate + credit |
-| `cloud_waste` | Dev/staging environments running continuously | Right-size or terminate |
+| Finding type | Description |
+|---|---|
+| `duplicate_payment` | Same vendor + similar amount within 7 days |
+| `unused_subscription` | Recurring SaaS charges detected as a pattern |
+| `cost_anomaly` | Statistically abnormal spend vs. baseline for that vendor |
+| `cloud_waste` | Cloud spending patterns indicating inefficiency |
 
-Each finding includes an **estimated recovery amount**, a **confidence score (0–100%)**, an **evidence snapshot**, and **recommended actions**.
+Each finding includes: **trust tier**, **estimate range** (MEDIUM/HIGH), **observed value**, **observation period**, **evidence snapshot**, and **recommended actions**.
 
 ---
 
@@ -86,7 +107,7 @@ date,amount,currency,vendor,description
 2024-01-20,1250,EUR,AWS,EC2 dev server
 ```
 
-Minimum required: `date`, `amount`, `vendor`.  
+Minimum required: `date`, `amount`, `vendor`.
 Also accepts JSON. Currency defaults to EUR; detected per-dataset automatically.
 
 ---
@@ -99,23 +120,38 @@ from sios import SIOS
 agent = SIOS()
 result = agent.run("data/transactions.csv")
 
-print(f"Estimated savings: {result.estimated_savings:,.0f} {result.currency}")
+print(f"Quantified savings: {result.estimated_savings:,.0f} {result.currency}")
 
 for finding in result.findings:
-    print(f"  [{finding.type.value}]  {finding.estimated_amount:,.0f} {finding.currency}  conf={finding.confidence:.0%}")
-    print(f"  {finding.title}")
-    print(f"  {finding.description[:100]}")
+    tier = finding.trust_tier   # "LOW" | "MEDIUM" | "HIGH"
+    if tier == "LOW":
+        print(f"  [{finding.type.value}]  Signal only — {finding.title}")
+    else:
+        print(f"  [{finding.type.value}]  {finding.estimate_low:.0f}–{finding.estimate_high:.0f} {finding.currency}  [{tier}]")
+        print(f"  {finding.title}")
 ```
 
 ### AuditResult fields
 
 | Field | Type | Description |
 |---|---|---|
-| `findings` | `List[Finding]` | Detected anomalies, ordered by amount |
-| `estimated_savings` | `float` | Total recoverable across all findings |
+| `findings` | `List[Finding]` | Detected anomalies, ordered by trust then amount |
+| `estimated_savings` | `float` | Total recoverable (MEDIUM + HIGH trust only) |
 | `currency` | `str` | Currency code (`EUR`, `USD`, …) |
 | `dataset_rows` | `int` | Number of transactions analyzed |
 | `summary` | `dict` | Breakdown by finding type |
+
+### Finding fields (v2)
+
+| Field | Type | Description |
+|---|---|---|
+| `trust_tier` | `str` | `"LOW"` / `"MEDIUM"` / `"HIGH"` |
+| `trust_score` | `int` | 0–100 composite score |
+| `estimate_low` | `float?` | Lower bound of savings range |
+| `estimate_high` | `float?` | Upper bound of savings range |
+| `observed_value` | `float?` | Total spend observed in dataset |
+| `observed_period` | `str?` | e.g. `"6 months"` |
+| `confidence` | `float` | 0.0–1.0 (derived from trust_score) |
 
 ---
 
@@ -132,7 +168,7 @@ sios aws --days 90
 sios aws --profile production --days 60 --save aws_costs.csv
 ```
 
-Requires IAM permission `ce:GetCostAndUsage`. Detects idle reservations, dev environment waste, and service-level anomalies.
+Requires IAM permission `ce:GetCostAndUsage`.
 
 ### Stripe
 
@@ -146,64 +182,35 @@ sios stripe --days 90
 sios stripe --api-key sk_live_... --save stripe_charges.csv
 ```
 
-### Python API — connectors
-
-```python
-from sios.connectors.aws import AWSConnector
-from sios.connectors.stripe import StripeConnector
-from sios.value_engine.engine import ValueEngine
-
-# AWS
-transactions = AWSConnector(profile="production").fetch(days=90)
-findings = ValueEngine().run(transactions)
-
-# Stripe
-transactions = StripeConnector(api_key="sk_live_...").fetch(days=90)
-findings = ValueEngine().run(transactions)
-```
-
 ---
 
-## Verifiable proofs (optional)
+## Verifiable proofs (CPO)
 
-Every finding can be signed and submitted to a Proof Protocol node:
+Every audit generates a **CPO (Computational Proof Object)** — a SHA-256 fingerprint of all inputs, outputs, and findings. The proof is:
+
+- **Content-addressed** — SHA-256 hash of inputs + outputs
+- **Reproducible** — re-run detection on the same file, get the same proof
+- **Shareable** — one URL to share with your finance team, external auditor, or vendor
 
 ```bash
 sios prove transactions.csv --node https://your-sios-node.onrender.com
 ```
 
 ```
-Generating proofs via https://your-sios-node.onrender.com ...
-
-  AWS duplicate charge confirmed          CPO: 3f8a21c9b7...
-  Slack subscription anomaly              CPO: 9d1e4507a2...
-  Dev environment cloud waste             CPO: c2f6bb0814...
-
-3 proofs generated.
+CPO: a83f2c91d4e7b0f3...
+Verified: https://your-sios-node.onrender.com/verify/a83f2c91d4e7b0f3
 ```
 
-Each **CPO (Computational Proof Object)** is:
-- **Cryptographically signed** — Ed25519 signature over the canonical payload
-- **Content-addressed** — SHA-256 hash of inputs + outputs
-- **Reproducible** — re-execute at any time, get the same result
-- **Append-only** — recorded in a tamper-evident ledger
-
-The proof ties the finding to the specific code, data, and environment that produced it — creating an **audit trail** suitable for sharing with finance teams, external auditors, or vendors during dispute resolution.
+The CPO is the differentiating feature: **other tools detect anomalies; SIOS proves the detection is reproducible**.
 
 ---
 
 ## Export
 
 ```bash
-# JSON report
 sios detect transactions.csv --format json > report.json
-
-# CSV for Excel / BI tools
-sios detect transactions.csv --format csv > report.csv
-
-# Save directly
+sios detect transactions.csv --format csv  > report.csv
 sios export transactions.csv --out report.json
-sios export transactions.csv --format csv --out report.csv
 ```
 
 ---
@@ -215,33 +222,33 @@ sios export transactions.csv --format csv --out report.csv
           │
           ▼
   ┌─────────────────────┐
-  │  Ingestion layer    │  Transaction normalization → canonical data model
+  │  Ingestion layer    │  Transaction normalization → canonical model
   └─────────────────────┘
           │
           ▼
   ┌─────────────────────┐
-  │  Value Engine       │  Rule-based detection pipeline (idempotent, stateless)
-  │  4 detectors        │  duplicate · subscription · anomaly · cloud waste
+  │  Value Engine       │  Pattern detection pipeline (deterministic)
+  │  4 detectors        │  duplicate · subscription · anomaly · cloud
   └─────────────────────┘
           │
           ▼
   ┌─────────────────────┐
-  │  Findings           │  amount · confidence · evidence · recommended actions
+  │  Trust Engine       │  Score each finding: LOW / MEDIUM / HIGH
+  │  (anti-hallucin.)   │  Range estimates, no extrapolation on thin data
   └─────────────────────┘
           │
           ▼
   ┌─────────────────────┐
-  │  Proof Protocol     │  Ed25519 sign · SHA-256 hash · append-only ledger
-  │  (optional)         │  Verifiable, reproducible execution trace
+  │  Proof Protocol     │  SHA-256 · append-only ledger · verify URL
+  │  (CPO)              │  Reproducible, shareable audit trail
   └─────────────────────┘
 ```
 
 **Design principles:**
-- **Deterministic execution** — same input always produces the same findings
-- **Idempotent processing** — running twice on the same dataset returns cached results
-- **Modular architecture** — each detector is an independent plugin; add your own
-- **Persistent store** — SQLite (default) or Postgres; WAL mode, thread-safe
-- **Stateless API** — the FastAPI server layer adds no shared mutable state
+- **Honest by default** — LOW trust findings never show € amounts
+- **Deterministic** — same input always produces the same findings and proof
+- **No double-counting** — each transaction claimed by at most one finding
+- **Modular** — each detector is an independent plugin
 
 ---
 
@@ -252,7 +259,7 @@ sios run    file.csv                      # Full audit, formatted output
 sios detect file.csv                      # Detection only, table format
 sios detect file.csv --format json        # JSON output
 sios detect file.csv --format csv         # CSV output
-sios prove  file.csv --node <url>         # Audit + generate CPO proofs
+sios prove  file.csv --node <url>         # Audit + generate CPO proof
 sios export file.csv --out report.json    # Save to file
 sios aws    --days 90                     # Pull from AWS Cost Explorer
 sios stripe --days 90                     # Pull from Stripe
@@ -272,19 +279,21 @@ pip install sios[all]         # Everything
 
 ---
 
-## Why SIOS
+## What SIOS is (and isn't)
 
-Most companies lose money silently:
+SIOS is a **probabilistic anomaly detection system** with a **verifiable audit trail**.
 
-- **Forgotten SaaS subscriptions** — tools nobody uses, renewed automatically
-- **Duplicate vendor billing** — the same invoice paid twice in the same cycle
-- **Cloud environments running 24/7** — dev and staging never turned off
-- **One-time spikes never investigated** — a load test billed at full rate, forever forgotten
+It is good at:
+- Surfacing patterns in transaction data that warrant investigation
+- Generating reproducible, shareable proof of what was detected
+- Giving finance teams a fast starting point for cost reviews
 
-SIOS detects these patterns automatically from raw transaction data.  
-Every result is backed by a confidence score, an evidence snapshot, and — when you need it — a cryptographic proof that the finding is reproducible and tamper-evident.
+It is not:
+- A replacement for a human auditor or accountant
+- A system that verifies whether charges are contractually valid
+- A guarantee of recovered amounts
 
-**Install, run, recover value.**
+The trust engine is explicit about this: if data is insufficient, SIOS says so rather than inventing numbers.
 
 ---
 
@@ -296,7 +305,7 @@ Every result is backed by a confidence score, an evidence snapshot, and — when
 | **Engineering** | Post-incident cost review after infrastructure changes |
 | **Startup CFO** | SaaS spend audit before a funding round |
 | **Accountant / firm** | Client cost optimization as a service |
-| **SaaS vendor** | Embed duplicate billing detection into your own product |
+| **SaaS vendor** | Embed anomaly detection into your own product |
 
 ---
 
@@ -306,12 +315,12 @@ Every result is backed by a confidence score, an evidence snapshot, and — when
 - [x] Python SDK (`from sios import SIOS`)
 - [x] AWS Cost Explorer connector
 - [x] Stripe connector
+- [x] Trust engine (LOW / MEDIUM / HIGH tiers, range estimates)
 - [x] Verifiable proofs (CPO)
 - [x] PyPI package (`pip install sios`)
 - [ ] PDF / bank statement ingestion
-- [ ] Qonto, Pennylane, QuickBooks, Sage connectors
+- [ ] Qonto, Pennylane, QuickBooks connectors
 - [ ] Continuous monitoring (scheduled detection)
-- [ ] Export to PDF audit report
 - [ ] Custom detector plugin API
 
 ---
@@ -322,4 +331,4 @@ MIT — free to use, modify, and embed in commercial products.
 
 ---
 
-*SIOS detects financial inefficiencies in structured data. We turn raw transactions into audited savings opportunities.*
+*SIOS detects financial inefficiency patterns in structured transaction data. Results are probabilistic estimates and do not constitute verified financial statements.*
