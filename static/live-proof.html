@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIOS — Mini-Audit Instantané</title>
+  <meta name="description" content="Uploadez jusqu'à 50 transactions. Résultat en 30 secondes. Aucune inscription.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    nav {
+      border-bottom: 1px solid #eee;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    .nav-logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
+    .nav-links { display: flex; gap: 24px; font-size: 0.88rem; color: #555; }
+    .nav-links a:hover { color: #1a1a1a; }
+    .nav-cta { margin-left: auto; padding: 7px 18px; background: #1a1a1a; color: #fff; border-radius: 7px; font-size: 0.85rem; font-weight: 600; }
+
+    .page { max-width: 640px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    .hero-eyebrow { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 10px; }
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 10px; }
+    .hero-sub { color: #555; font-size: 1rem; margin-bottom: 8px; }
+    .trust-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; font-size: 0.8rem; color: #888; }
+    .trust-row span::before { content: "✓ "; color: #22c55e; font-weight: 700; }
+
+    /* ── Upload zone ─────────────────────────────────────────────── */
+    .upload-card {
+      border: 2px solid #1a1a1a;
+      border-radius: 14px;
+      padding: 32px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #ddd;
+      border-radius: 10px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #1a1a1a; background: #fafafa; }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .drop-zone .icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .drop-zone .label { font-size: 0.9rem; color: #555; }
+    .drop-zone .label b { color: #1a1a1a; }
+    .file-selected { font-size: 0.85rem; color: #1a1a1a; font-weight: 600; margin-top: 10px; }
+
+    .limit-note { font-size: 0.82rem; color: #888; text-align: center; margin: 12px 0; }
+    .limit-note a { color: #555; text-decoration: underline; }
+
+    .run-btn {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 16px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .run-btn:hover { background: #333; }
+    .run-btn:active { transform: scale(0.99); }
+    .run-btn:disabled { background: #999; cursor: not-allowed; }
+
+    .progress-bar {
+      height: 4px;
+      background: #e5e5e5;
+      border-radius: 2px;
+      margin-top: 16px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar.show { display: block; }
+    .progress-fill {
+      height: 100%;
+      background: #1a1a1a;
+      width: 0%;
+      transition: width 0.4s ease;
+      border-radius: 2px;
+    }
+
+    /* ── Results ─────────────────────────────────────────────────── */
+    .results { margin-top: 32px; display: none; }
+    .results.show { display: block; }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .result-title { font-size: 1rem; font-weight: 700; }
+    .result-meta { font-size: 0.78rem; color: #888; }
+
+    .findings-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .finding-item {
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .finding-info { flex: 1; }
+    .finding-type { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #888; margin-bottom: 2px; }
+    .finding-title { font-size: 0.9rem; font-weight: 600; }
+    .finding-desc { font-size: 0.82rem; color: #666; margin-top: 2px; }
+    .finding-amount { font-size: 1rem; font-weight: 800; color: #16a34a; white-space: nowrap; }
+    .tier-pill { font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; text-transform: uppercase; }
+    .tier-HIGH { background: #dcfce7; color: #166534; }
+    .tier-MEDIUM { background: #dbeafe; color: #1d4ed8; }
+    .tier-LOW { background: #f0f0f0; color: #888; }
+
+    .total-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-top: 2px solid #1a1a1a;
+      font-weight: 800;
+      font-size: 1rem;
+    }
+    .total-bar .amount { font-size: 1.2rem; color: #16a34a; }
+
+    .no-findings {
+      text-align: center;
+      padding: 32px;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      color: #888;
+    }
+    .no-findings h3 { color: #444; margin-bottom: 6px; }
+
+    .share-result {
+      margin-top: 20px;
+      padding: 16px 20px;
+      background: #f7f7f7;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .share-result p { font-size: 0.88rem; color: #555; }
+    .share-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .share-btn {
+      padding: 8px 16px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .share-btn:hover { background: #333; }
+    .share-btn.outline {
+      background: #fff;
+      color: #1a1a1a;
+      border: 1.5px solid #1a1a1a;
+    }
+    .share-btn.outline:hover { background: #f0f0f0; }
+
+    /* error */
+    .error-msg { margin-top: 12px; padding: 10px 14px; background: #fef2f2; color: #dc2626; border-radius: 8px; font-size: 0.88rem; display: none; }
+    .error-msg.show { display: block; }
+
+    footer { border-top: 1px solid #eee; text-align: center; padding: 32px; color: #aaa; font-size: 0.82rem; margin-top: 40px; }
+    footer a { color: #888; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">SIOS</a>
+  <div class="nav-links">
+    <a href="/gallery">Proof Gallery</a>
+    <a href="/benchmark">Benchmark</a>
+    <a href="/trail">Proof Trail</a>
+  </div>
+  <a href="/" class="nav-cta">Audit complet →</a>
+</nav>
+
+<div class="page">
+  <div class="hero-eyebrow">Live Proof</div>
+  <h1>Mini-Audit Instantané</h1>
+  <p class="hero-sub">Uploadez jusqu'à 50 transactions. Résultat en 30 secondes.</p>
+  <div class="trust-row">
+    <span>Aucune inscription</span>
+    <span>Résultat partageable</span>
+    <span>Détection réelle</span>
+    <span>Gratuit</span>
+  </div>
+
+  <div class="upload-card">
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".csv,.json" />
+      <div class="icon">📂</div>
+      <div class="label">
+        <b>Cliquez pour uploader</b> ou glissez-déposez<br>
+        <span style="font-size:0.82rem">CSV ou JSON · max 50 lignes · max 1 Mo</span>
+      </div>
+      <div class="file-selected" id="file-name"></div>
+    </div>
+
+    <p class="limit-note">
+      Limité à 50 transactions pour l'analyse instantanée.
+      Pour un audit complet (illimité + PDF + preuve crypto) → <a href="/">lancer un audit payant</a>.
+    </p>
+
+    <button class="run-btn" id="run-btn" disabled onclick="runLiveAudit()">
+      Analyser maintenant — gratuit →
+    </button>
+
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="result-header">
+      <span class="result-title" id="result-title">Résultats de l'analyse</span>
+      <span class="result-meta" id="result-meta"></span>
+    </div>
+
+    <div class="findings-list" id="findings-list"></div>
+
+    <div class="total-bar" id="total-bar" style="display:none">
+      <span>Économies estimées</span>
+      <span class="amount" id="total-amount"></span>
+    </div>
+
+    <div class="share-result" id="share-block" style="display:none">
+      <p>Ces résultats sont partageables — envoyez le lien à votre équipe financière.</p>
+      <div class="share-btns">
+        <button class="share-btn outline" onclick="copyLink()">Copier le lien</button>
+        <a href="/" class="share-btn">Audit complet →</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  SIOS — Financial Audit Engine ·
+  <a href="/gallery">Proof Gallery</a> ·
+  <a href="/">Audit complet (€49)</a>
+</footer>
+
+<script>
+const FINDING_TYPE_LABELS = {
+  duplicate_payment: 'Doublon de paiement',
+  unused_subscription: 'Abonnement inutilisé',
+  cloud_waste: 'Cloud waste',
+  cost_anomaly: 'Anomalie de coût',
+  unused_license: 'Licence inutilisée',
+  telecom_overcharge: 'Surcharge télécom',
+  renegotiable_contract: 'Contrat renégociable',
+};
+
+let selectedFile = null;
+
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.className = 'error-msg show';
+}
+function clearError() {
+  document.getElementById('error-msg').className = 'error-msg';
+}
+
+function onFileSelected(file) {
+  if (!file) return;
+  clearError();
+  if (!file.name.match(/\.(csv|json)$/i)) { showError('Seuls les fichiers .csv et .json sont acceptés.'); return; }
+  if (file.size > 1 * 1024 * 1024) { showError('Fichier trop grand (max 1 Mo).'); return; }
+  selectedFile = file;
+  document.getElementById('file-name').textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(1)} Ko)`;
+  document.getElementById('run-btn').disabled = false;
+  // Reset results
+  document.getElementById('results').className = 'results';
+}
+
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+fileInput.addEventListener('change', () => onFileSelected(fileInput.files[0]));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); onFileSelected(e.dataTransfer.files[0]); });
+
+function animateProgress() {
+  const fill = document.getElementById('progress-fill');
+  document.getElementById('progress-bar').className = 'progress-bar show';
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + (Math.random() * 8 + 4), 88);
+    fill.style.width = pct + '%';
+    if (pct >= 88) clearInterval(iv);
+  }, 180);
+  return { complete: () => { fill.style.width = '100%'; setTimeout(() => document.getElementById('progress-bar').className = 'progress-bar', 600); } };
+}
+
+async function runLiveAudit() {
+  if (!selectedFile) return;
+  clearError();
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = 'Analyse en cours…';
+  const prog = animateProgress();
+
+  try {
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    const r = await fetch('/live-audit', { method: 'POST', body: fd });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `Erreur ${r.status}`);
+    }
+    const d = await r.json();
+    prog.complete();
+    renderResults(d);
+
+    // Update URL to make shareable (store result in sessionStorage)
+    const resultKey = 'live-' + Date.now();
+    sessionStorage.setItem(resultKey, JSON.stringify(d));
+    history.replaceState({}, '', `/live?r=${resultKey}`);
+
+  } catch(e) {
+    prog.complete();
+    showError(e.message || 'Une erreur est survenue.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analyser maintenant — gratuit →';
+  }
+}
+
+function renderResults(d) {
+  document.getElementById('results').className = 'results show';
+  document.getElementById('result-title').textContent =
+    d.findings.length === 0 ? 'Aucune anomalie détectée' : `${d.findings.length} anomalie${d.findings.length > 1 ? 's' : ''} détectée${d.findings.length > 1 ? 's' : ''}`;
+  document.getElementById('result-meta').textContent =
+    `${d.dataset_rows} transactions analysées`;
+
+  const list = document.getElementById('findings-list');
+
+  if (d.findings.length === 0) {
+    list.innerHTML = `
+      <div class="no-findings">
+        <h3>Aucune anomalie détectée</h3>
+        <p>Vos 50 transactions ne présentent pas de pattern anormal détectable.<br>
+        Pour un audit sur un dataset plus large, <a href="/" style="color:#555;text-decoration:underline">lancez un audit complet</a>.</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = d.findings.map(f => `
+    <div class="finding-item">
+      <div class="finding-info">
+        <div class="finding-type">${FINDING_TYPE_LABELS[f.type] || f.type} <span class="tier-pill tier-${f.trust_tier || 'LOW'}">${f.trust_tier || 'SIGNAL'}</span></div>
+        <div class="finding-title">${f.title}</div>
+        ${f.description ? `<div class="finding-desc">${f.description}</div>` : ''}
+      </div>
+      ${f.estimated_amount > 0 ? `<div class="finding-amount">${fmt(f.estimated_amount)}</div>` : ''}
+    </div>
+  `).join('');
+
+  const total = d.estimated_savings || 0;
+  if (total > 0) {
+    document.getElementById('total-bar').style.display = 'flex';
+    document.getElementById('total-amount').textContent = fmt(total);
+  }
+
+  document.getElementById('share-block').style.display = 'flex';
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const btns = document.querySelectorAll('.share-btn.outline');
+    btns.forEach(b => { b.textContent = 'Copié !'; setTimeout(() => b.textContent = 'Copier le lien', 1800); });
+  });
+}
+</script>
+
+</body>
+</html>
