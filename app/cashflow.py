@@ -259,6 +259,12 @@ def _execute_audit(session_id: str) -> None:
         except Exception as exc:
             logger.error("Email delivery failed for %s: %s", session_id, exc)
 
+    # Sort: MEDIUM/HIGH first (have amounts), then LOW signals
+    sorted_findings = sorted(
+        result.findings,
+        key=lambda x: (x.trust_tier == "LOW", -(x.estimated_amount or 0)),
+    )
+
     findings_out = [
         {
             "type": f.type.value,
@@ -268,16 +274,31 @@ def _execute_audit(session_id: str) -> None:
             "confidence": round(f.confidence, 2),
             "description": f.description,
             "recommended_actions": f.recommended_actions[:3],
+            # Trust layer v2
+            "trust_tier": f.trust_tier,
+            "trust_score": f.trust_score,
+            "estimate_low": f.estimate_low,
+            "estimate_high": f.estimate_high,
+            "observed_value": f.observed_value,
+            "observed_period": f.observed_period,
         }
-        for f in sorted(result.findings, key=lambda x: x.estimated_amount or 0, reverse=True)
+        for f in sorted_findings
     ]
+
+    # Total only counts MEDIUM and HIGH trust findings (anti-hallucination)
+    quantified_total = float(sum(
+        f.estimated_amount for f in result.findings
+        if f.trust_tier in ("MEDIUM", "HIGH") and f.estimated_amount
+    ))
+    signal_only_count = sum(1 for f in result.findings if f.trust_tier == "LOW")
 
     response = {
         "status": "done",
         "session_id": session_id,
-        "total_detected": round(result.estimated_savings, 2),
+        "total_detected": round(quantified_total, 2),
         "currency": result.currency,
         "findings_count": len(result.findings),
+        "signal_only_count": signal_only_count,
         "transactions_analyzed": result.dataset_rows,
         "findings": findings_out,
         "cpo": cpo,
