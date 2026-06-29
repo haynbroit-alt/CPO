@@ -25,6 +25,7 @@
     .nav-logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
     .nav-links { display: flex; gap: 24px; font-size: 0.88rem; color: #555; }
     .nav-links a:hover { color: #1a1a1a; }
+    .nav-links a.active { color: #1a1a1a; font-weight: 600; }
     .nav-cta { margin-left: auto; padding: 7px 18px; background: #1a1a1a; color: #fff; border-radius: 7px; font-size: 0.85rem; font-weight: 600; }
 
     .page { max-width: 640px; margin: 0 auto; padding: 48px 24px 80px; }
@@ -195,9 +196,10 @@
 <nav>
   <a href="/" class="nav-logo">SIOS</a>
   <div class="nav-links">
-    <a href="/gallery">Proof Gallery</a>
+    <a href="/gallery">Galerie de preuves</a>
     <a href="/benchmark">Benchmark</a>
-    <a href="/trail">Proof Trail</a>
+    <a href="/trail">Fil de preuves</a>
+    <a href="/live" class="active">Audit gratuit</a>
   </div>
   <a href="/" class="nav-cta">Audit complet →</a>
 </nav>
@@ -266,9 +268,9 @@
 </div>
 
 <footer>
-  SIOS — Financial Audit Engine ·
-  <a href="/gallery">Proof Gallery</a> ·
-  <a href="/">Audit complet (€49)</a>
+  SIOS — Moteur d'audit financier ·
+  <a href="/gallery">Galerie de preuves</a> ·
+  <a href="/">Audit complet (49 €)</a>
 </footer>
 
 <script>

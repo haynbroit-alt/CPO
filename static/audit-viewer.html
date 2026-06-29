@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SIOS — Audit Viewer</title>
+  <title>SIOS — Visualiseur d'audit</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -333,9 +333,10 @@
 <nav>
   <a href="/" class="nav-logo">SIOS</a>
   <div class="nav-links">
-    <a href="/gallery">Proof Gallery</a>
+    <a href="/gallery">Galerie de preuves</a>
     <a href="/benchmark">Benchmark</a>
-    <a href="/trail">Proof Trail</a>
+    <a href="/trail">Fil de preuves</a>
+    <a href="/live">Audit gratuit</a>
     <a href="/live">Audit gratuit</a>
   </div>
   <a href="/" class="nav-cta">Lancer un audit →</a>
@@ -592,7 +593,7 @@ async function loadAudit() {
       <div class="error-state">
         <h2>Audit introuvable</h2>
         <p>${e.message}</p>
-        <p style="margin-top:16px"><a href="/gallery" style="color:#555;text-decoration:underline">← Retour à la Proof Gallery</a></p>
+        <p style="margin-top:16px"><a href="/gallery" style="color:#555;text-decoration:underline">← Retour à la galerie</a></p>
       </div>`;
   }
 }

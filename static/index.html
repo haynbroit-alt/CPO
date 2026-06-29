@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SIOS — Find hidden money in your data</title>
+  <title>SIOS — Trouvez l'argent caché dans vos données</title>
   <style>
     .site-nav {
       display: flex;
@@ -29,7 +29,7 @@
     }
     .site-nav .gallery-cta:hover { background: #f5f5f5; }
   </style>
-  <meta name="description" content="Upload a CSV. Get verified financial losses and cryptographic proof in under 2 minutes.">
+  <meta name="description" content="Déposez un CSV. Obtenez des pertes financières vérifiées et une preuve cryptographique en moins de 2 minutes.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -271,8 +271,10 @@
 <nav class="site-nav">
   <a href="/" class="logo">SIOS</a>
   <div class="nav-links">
-    <a href="/gallery">Preuves</a>
-    <a href="/vault">Mon espace</a>
+    <a href="/gallery">Galerie</a>
+    <a href="/benchmark">Benchmark</a>
+    <a href="/trail">Fil de preuves</a>
+    <a href="/live">Audit gratuit</a>
   </div>
   <a href="/demo" class="gallery-cta">Tester gratuitement →</a>
 </nav>
@@ -327,8 +329,8 @@
       <input type="file" id="file-input" accept=".csv,.json" />
       <div class="icon">📂</div>
       <div class="label">
-        <b>Click to upload</b> or drag and drop<br>
-        <span>CSV or JSON · max 10 MB</span>
+        <b>Cliquer pour importer</b> ou glisser-déposer<br>
+        <span>CSV ou JSON · max 10 Mo</span>
       </div>
       <div class="file-selected" id="file-name"></div>
     </div>
@@ -337,7 +339,7 @@
       type="email"
       class="email-input"
       id="email-input"
-      placeholder="your@email.com (optional — receive PDF by email)"
+      placeholder="votre@email.com (facultatif — recevoir le PDF par email)"
     />
 
     <button class="cta-btn" id="submit-btn" disabled>
@@ -345,35 +347,35 @@
     </button>
 
     <div class="trust-badges">
-      <span>Cryptographic proof included</span>
-      <span>Works on any CSV</span>
-      <span>No setup required</span>
+      <span>Preuve cryptographique incluse</span>
+      <span>Compatible tout CSV</span>
+      <span>Sans configuration</span>
     </div>
 
     <div class="msg error" id="error-msg"></div>
     <div class="msg info"  id="info-msg"></div>
 
     <p style="margin-top:16px;font-size:0.78rem;color:#aaa;text-align:center;line-height:1.5">
-      Results are probabilistic estimates based on pattern detection.<br>
-      They do not constitute verified financial statements.
+      Les résultats sont des estimations probabilistes basées sur la détection de patterns.<br>
+      Ils ne constituent pas des états financiers certifiés.
     </p>
   </div>
 
   <!-- ── Data quality ─────────────────────────────────────── -->
   <div style="margin:0 0 32px;padding:20px 24px;background:#f7f7f7;border:1px solid #e5e5e5;border-radius:12px">
-    <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#888;margin-bottom:14px">Output quality by dataset size</div>
+    <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#888;margin-bottom:14px">Qualité d'analyse selon la taille du dataset</div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.88rem">
-        <span style="color:#555">Under 50 transactions</span>
-        <span style="background:#f0f0f0;color:#888;padding:2px 10px;border-radius:100px;font-size:0.75rem;font-weight:700">SIGNALS ONLY</span>
+        <span style="color:#555">Moins de 50 transactions</span>
+        <span style="background:#f0f0f0;color:#888;padding:2px 10px;border-radius:100px;font-size:0.75rem;font-weight:700">SIGNAUX SEULEMENT</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.88rem">
         <span style="color:#555">50–200 transactions</span>
-        <span style="background:#dbeafe;color:#1d4ed8;padding:2px 10px;border-radius:100px;font-size:0.75rem;font-weight:700">RANGE ESTIMATES</span>
+        <span style="background:#dbeafe;color:#1d4ed8;padding:2px 10px;border-radius:100px;font-size:0.75rem;font-weight:700">FOURCHETTES</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.88rem">
-        <span style="color:#555">200+ transactions (recommended)</span>
-        <span style="background:#dcfce7;color:#166534;padding:2px 10px;border-radius:100px;font-size:0.75rem;font-weight:700">QUANTIFIED</span>
+        <span style="color:#555">200+ transactions (recommandé)</span>
+        <span style="background:#dcfce7;color:#166534;padding:2px 10px;border-radius:100px;font-size:0.75rem;font-weight:700">CHIFFRÉ</span>
       </div>
     </div>
   </div>
@@ -386,41 +388,41 @@
               text-decoration:none;color:#1a1a1a;transition:background .15s"
        onmouseover="this.style.background='#f5f5f5'"
        onmouseout="this.style.background='transparent'">
-      Try free demo — no payment needed →
+      Tester gratuitement — sans paiement →
     </a>
     <p style="margin-top:8px;font-size:0.82rem;color:#aaa" id="stats-line"></p>
   </div>
 
   <!-- ── How it works ─────────────────────────────────────── -->
   <section class="section">
-    <h2>How it works</h2>
+    <h2>Comment ça marche</h2>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-text">
-          <strong>Upload your transaction file</strong>
-          <span>CSV or JSON from your bank, Stripe export, or AWS billing.</span>
+          <strong>Importez votre fichier de transactions</strong>
+          <span>CSV ou JSON depuis votre banque, export Stripe, ou facturation AWS.</span>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-text">
-          <strong>Pay securely</strong>
-          <span>€49 one-time via Stripe. Card, Apple Pay, or Google Pay.</span>
+          <strong>Payez en toute sécurité</strong>
+          <span>49 € en une fois via Stripe. Carte, Apple Pay ou Google Pay.</span>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-text">
-          <strong>Get your findings</strong>
-          <span>Duplicate charges, unused subscriptions, cloud waste — with amounts and confidence scores.</span>
+          <strong>Recevez vos résultats</strong>
+          <span>Doublons, abonnements inutilisés, gaspillage cloud — avec montants et scores de confiance.</span>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-text">
-          <strong>Download your proof</strong>
-          <span>PDF report with every finding and a cryptographic proof (CPO) you can share with your team or auditor.</span>
+          <strong>Téléchargez votre preuve</strong>
+          <span>Rapport PDF avec chaque anomalie et une preuve cryptographique (CPO) partageable avec votre équipe ou auditeur.</span>
         </div>
       </div>
     </div>
@@ -428,35 +430,35 @@
 
   <!-- ── Detectors ─────────────────────────────────────────── -->
   <section class="section">
-    <h2>What SIOS detects</h2>
+    <h2>Ce que SIOS détecte</h2>
     <div class="detector-grid">
       <div class="detector-card">
-        <div class="tag">Duplicate payment</div>
-        <p>Same vendor + similar amount billed twice within days.</p>
+        <div class="tag">Paiement en double</div>
+        <p>Même fournisseur + montant similaire facturé deux fois à quelques jours d'intervalle.</p>
       </div>
       <div class="detector-card">
-        <div class="tag">Unused subscription</div>
-        <p>Recurring charges with no usage signal. Tools nobody uses.</p>
+        <div class="tag">Abonnement inutilisé</div>
+        <p>Charges récurrentes sans signal d'utilisation. Des outils que personne n'utilise.</p>
       </div>
       <div class="detector-card">
-        <div class="tag">Cost anomaly</div>
-        <p>Statistically abnormal spend vs. your baseline for that vendor.</p>
+        <div class="tag">Anomalie de coût</div>
+        <p>Dépense statistiquement anormale par rapport à votre référentiel pour ce fournisseur.</p>
       </div>
       <div class="detector-card">
-        <div class="tag">Cloud waste</div>
-        <p>Dev and staging environments running 24/7, never turned off.</p>
+        <div class="tag">Gaspillage cloud</div>
+        <p>Environnements de dev et staging tournant 24h/7j, jamais éteints.</p>
       </div>
     </div>
   </section>
 
   <!-- ── Proof section ─────────────────────────────────────── -->
   <section class="section">
-    <h2>Every detection is verifiable</h2>
+    <h2>Chaque détection est vérifiable</h2>
     <p style="color:#555;margin-bottom:20px">
-      SIOS generates a <strong>CPO (Computational Proof Object)</strong> — a SHA-256 fingerprint of every
-      input, output, and finding. Re-run detection on the same file and get the same proof.
-      Share a link with your finance team, external auditor, or vendor.
-      This is the core differentiator: other tools detect anomalies; SIOS <em>proves</em> the detection is reproducible.
+      SIOS génère un <strong>CPO (Cryptographic Proof Object)</strong> — une empreinte SHA-256 de chaque
+      entrée, sortie et anomalie détectée. Relancez la détection sur le même fichier et obtenez la même preuve.
+      Partagez un lien avec votre équipe financière, auditeur externe, ou fournisseur.
+      C'est le différenciateur clé : d'autres outils détectent des anomalies ; SIOS <em>prouve</em> que la détection est reproductible.
     </p>
     <div class="proof-block">
       <span class="comment"># SIOS Audit Proof</span><br>
@@ -470,7 +472,7 @@
 
   <!-- ── Footer ────────────────────────────────────────────── -->
   <footer>
-    SIOS — Financial Audit Engine ·
+    SIOS — Moteur d'audit financier ·
     <a href="https://github.com/haynbroit-alt/CPO">GitHub</a> ·
     <a href="https://pypi.org/project/sios/">PyPI</a>
     <br>
@@ -508,11 +510,11 @@
   function onFileSelected(file) {
     if (!file) return;
     if (!file.name.match(/\.(csv|json)$/i)) {
-      showError('Only .csv and .json files are accepted.');
+      showError('Seuls les fichiers .csv et .json sont acceptés.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      showError('File too large (max 10 MB).');
+      showError('Fichier trop volumineux (max 10 Mo).');
       return;
     }
     clearMessages();
@@ -529,8 +531,8 @@
   fetch('/stats').then(r => r.json()).then(d => {
     const line = document.getElementById('stats-line');
     if (line && d.total_audits > 0) {
-      const fmt = n => new Intl.NumberFormat('en-EU', {style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
-      line.textContent = `${d.total_audits} audit${d.total_audits !== 1 ? 's' : ''} completed · ${fmt(d.total_detected_eur)} detected so far`;
+      const fmt = n => new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
+      line.textContent = `${d.total_audits} audit${d.total_audits !== 1 ? 's' : ''} terminé${d.total_audits !== 1 ? 's' : ''} · ${fmt(d.total_detected_eur)} détectés`;
     }
   }).catch(() => {});
 
@@ -544,7 +546,7 @@
     if (!selectedFile) return;
     clearMessages();
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Uploading…';
+    submitBtn.textContent = 'Envoi en cours…';
 
     try {
       // 1. Upload file
@@ -560,8 +562,8 @@
       const { session_id } = await uploadRes.json();
 
       // 2. Get checkout URL
-      showInfo('Redirecting to payment…');
-      submitBtn.textContent = 'Preparing payment…';
+      showInfo('Redirection vers le paiement…');
+      submitBtn.textContent = 'Préparation du paiement…';
 
       const checkoutRes = await fetch(`/checkout/${session_id}`, { method: 'POST' });
       if (!checkoutRes.ok) {
@@ -571,14 +573,14 @@
       const { url, dev_mode } = await checkoutRes.json();
 
       if (dev_mode) {
-        showInfo('Dev mode: payment skipped. Redirecting to results…');
+        showInfo('Mode dev : paiement ignoré. Redirection vers les résultats…');
       }
 
       // 3. Redirect to Stripe (or results in dev mode)
       window.location.href = url;
 
     } catch (err) {
-      showError(err.message || 'Something went wrong. Please try again.');
+      showError(err.message || 'Une erreur est survenue. Veuillez réessayer.');
       submitBtn.disabled = false;
       submitBtn.textContent = "Lancer l'audit — 49 € →";
     }
