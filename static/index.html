@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -271,49 +271,57 @@
 <nav class="site-nav">
   <a href="/" class="logo">SIOS</a>
   <div class="nav-links">
-    <a href="/gallery">Proof Gallery</a>
+    <a href="/gallery">Preuves</a>
     <a href="/vault">Mon espace</a>
   </div>
-  <a href="/gallery" class="gallery-cta">Voir les preuves →</a>
+  <a href="/demo" class="gallery-cta">Tester gratuitement →</a>
 </nav>
 
 <div class="container">
 
   <!-- ── Hero ─────────────────────────────────────────────── -->
   <section class="hero">
-    <h1>Detect financial<br>inefficiency patterns.</h1>
-    <p>Upload your transaction data. Get probabilistically-scored findings + cryptographic proof of what was detected.</p>
+    <h1>Découvrez l'argent<br>que vous gaspillez sans le voir.</h1>
+    <p>Déposez vos transactions. SIOS détecte les paiements en double, abonnements morts, gaspillage cloud et anomalies de coût — chiffrés, scorés, et accompagnés d'une preuve vérifiable.</p>
+    <div style="margin-top:28px">
+      <a href="/demo" style="display:inline-block;padding:14px 32px;background:#1a1a1a;color:#fff;border-radius:9px;font-size:1.05rem;font-weight:700;text-decoration:none">
+        Tester gratuitement →
+      </a>
+      <p style="margin-top:12px;font-size:0.85rem;color:#888">
+        Aucun paiement, aucune inscription · résultat en moins de 2 min
+      </p>
+    </div>
   </section>
 
   <!-- ── Example ──────────────────────────────────────────── -->
   <div class="example">
-    <h3>Example — 312 transactions · 6 months</h3>
+    <h3>Exemple — 312 transactions · 6 mois</h3>
     <div class="finding-row">
-      <span class="finding-type">Cloud waste — AWS <span style="font-size:0.75rem;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">HIGH</span></span>
-      <span class="finding-amount" style="color:#16a34a">€1,260 – €3,780</span>
+      <span class="finding-type">Gaspillage cloud — AWS <span style="font-size:0.75rem;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">HIGH</span></span>
+      <span class="finding-amount" style="color:#16a34a">€1 260 – €3 780</span>
     </div>
     <div class="finding-row">
-      <span class="finding-type">Duplicate payment — Datadog <span style="font-size:0.75rem;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">HIGH</span></span>
-      <span class="finding-amount" style="color:#16a34a">€1,195</span>
+      <span class="finding-type">Paiement en double — Datadog <span style="font-size:0.75rem;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">HIGH</span></span>
+      <span class="finding-amount" style="color:#16a34a">€1 195</span>
     </div>
     <div class="finding-row">
-      <span class="finding-type">Unused subscription — Slack <span style="font-size:0.75rem;background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">MED</span></span>
+      <span class="finding-type">Abonnement inutilisé — Slack <span style="font-size:0.75rem;background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">MED</span></span>
       <span class="finding-amount" style="color:#1d4ed8">€90 – €360</span>
     </div>
     <div class="finding-row" style="color:#888">
-      <span class="finding-type">Cost anomaly — AWS spike <span style="font-size:0.75rem;background:#f0f0f0;color:#888;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">SIGNAL</span></span>
-      <span style="font-size:0.85rem">more data needed</span>
+      <span class="finding-type">Anomalie de coût — pic AWS <span style="font-size:0.75rem;background:#f0f0f0;color:#888;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px">SIGNAL</span></span>
+      <span style="font-size:0.85rem">données insuffisantes</span>
     </div>
     <div class="total-row">
-      <span>Quantified estimate</span>
-      <span>€2,545 – €5,335</span>
+      <span>Estimation chiffrée</span>
+      <span>€2 545 – €5 335</span>
     </div>
   </div>
 
   <!-- ── Upload form ───────────────────────────────────────── -->
   <div class="form-card" id="upload-form">
-    <h2>Run your audit — €49</h2>
-    <p class="price-note">One-time payment. PDF report + cryptographic proof included.</p>
+    <h2>Audit complet — 49 €</h2>
+    <p class="price-note">Optionnel. Le rapport PDF détaillé + la preuve partageable. La détection est déjà gratuite ci-dessus.</p>
 
     <div class="drop-zone" id="drop-zone">
       <input type="file" id="file-input" accept=".csv,.json" />
@@ -333,7 +341,7 @@
     />
 
     <button class="cta-btn" id="submit-btn" disabled>
-      Upload &amp; Pay €49 →
+      Lancer l'audit — 49 € →
     </button>
 
     <div class="trust-badges">
@@ -572,7 +580,7 @@
     } catch (err) {
       showError(err.message || 'Something went wrong. Please try again.');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Upload & Pay €49 →';
+      submitBtn.textContent = "Lancer l'audit — 49 € →";
     }
   });
 </script>
