@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIOS — Proof Gallery</title>
+  <meta name="description" content="100 audits financiers vérifiés, reproductibles, auditables. SIOS ne promet pas. SIOS prouve.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Nav ─────────────────────────────────────────────────── */
+    nav {
+      border-bottom: 1px solid #eee;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    .nav-logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
+    .nav-links { display: flex; gap: 24px; font-size: 0.88rem; color: #555; }
+    .nav-links a:hover { color: #1a1a1a; }
+    .nav-links a.active { color: #1a1a1a; font-weight: 600; }
+    .nav-cta {
+      margin-left: auto;
+      padding: 7px 18px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+    .hero {
+      max-width: 760px;
+      margin: 56px auto 40px;
+      padding: 0 24px;
+    }
+    .hero-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+    .hero p { color: #555; font-size: 1.05rem; max-width: 560px; }
+
+    /* ── Stats bar ────────────────────────────────────────────── */
+    .stats-bar {
+      max-width: 760px;
+      margin: 0 auto 40px;
+      padding: 0 24px;
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .stat { display: flex; flex-direction: column; }
+    .stat-val { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+    .stat-label { font-size: 0.78rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .layout {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 40px;
+    }
+    @media (max-width: 680px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Filters ──────────────────────────────────────────────── */
+    .filters { position: sticky; top: 24px; align-self: start; }
+    .filter-group { margin-bottom: 28px; }
+    .filter-group h3 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #888;
+      margin-bottom: 10px;
+    }
+    .filter-pill {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      color: #555;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .filter-pill:hover { background: #f5f5f5; color: #1a1a1a; }
+    .filter-pill.active { background: #1a1a1a; color: #fff; }
+    .filter-pill .count {
+      float: right;
+      font-size: 0.75rem;
+      opacity: 0.6;
+      margin-top: 1px;
+    }
+    .filter-reset {
+      font-size: 0.8rem;
+      color: #888;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      padding: 4px 0;
+      display: none;
+    }
+    .filter-reset:hover { color: #1a1a1a; }
+    .filter-reset.visible { display: block; }
+
+    /* ── Audit grid ───────────────────────────────────────────── */
+    .grid-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .grid-count { font-size: 0.88rem; color: #888; }
+
+    .audit-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Audit card ───────────────────────────────────────────── */
+    .audit-card {
+      border: 1px solid #e5e5e5;
+      border-radius: 12px;
+      padding: 20px 22px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .audit-card:hover { border-color: #1a1a1a; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .card-id { font-size: 0.8rem; color: #aaa; font-weight: 600; }
+    .card-sector {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: #f5f5f5;
+      color: #555;
+      padding: 2px 8px;
+      border-radius: 100px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+    }
+    .badge-client { background: #dcfce7; color: #166534; }
+    .badge-internal { background: #fef9c3; color: #854d0e; }
+    .badge-reproducible { background: #dbeafe; color: #1d4ed8; }
+
+    .card-anomalies { display: flex; flex-direction: column; gap: 6px; }
+    .anomaly-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      gap: 8px;
+    }
+    .anomaly-label { color: #444; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .anomaly-amount { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .trust-high { color: #16a34a; }
+    .trust-medium { color: #2563eb; }
+    .trust-low { color: #888; }
+
+    .card-footer {
+      border-top: 1px solid #eee;
+      padding-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-savings {
+      display: flex;
+      flex-direction: column;
+    }
+    .savings-estimated { font-size: 0.78rem; color: #888; }
+    .savings-confirmed { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; }
+    .savings-confirmed.has-confirmed { color: #16a34a; }
+    .footer-hash { font-size: 0.7rem; color: #bbb; font-family: monospace; }
+
+    /* ── Empty state ──────────────────────────────────────────── */
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }
+    .empty-state h3 { font-size: 1rem; color: #444; margin-bottom: 8px; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── Loading skeleton ─────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    .page-footer {
+      border-top: 1px solid #eee;
+      text-align: center;
+      padding: 32px 24px;
+      color: #aaa;
+      font-size: 0.82rem;
+    }
+    .page-footer a { color: #888; }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ────────────────────────────────────────────────────── -->
+<nav>
+  <a href="/" class="nav-logo">SIOS</a>
+  <div class="nav-links">
+    <a href="/">Accueil</a>
+    <a href="/gallery" class="active">Proof Gallery</a>
+    <a href="/vault">Mon espace</a>
+  </div>
+  <a href="/" class="nav-cta">Lancer un audit →</a>
+</nav>
+
+<!-- ── Hero ───────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-eyebrow">Proof Gallery</div>
+  <h1>Des économies prouvées,<br>ligne par ligne.</h1>
+  <p>SIOS ne promet pas. Chaque audit ci-dessous est vérifiable, reproductible, et auditable par un tiers.</p>
+</div>
+
+<!-- ── Stats ──────────────────────────────────────────────────── -->
+<div class="stats-bar" id="stats-bar">
+  <div class="stat"><span class="stat-val" id="stat-audits">—</span><span class="stat-label">audits vérifiés</span></div>
+  <div class="stat"><span class="stat-val" id="stat-eur">—</span><span class="stat-label">confirmés</span></div>
+  <div class="stat"><span class="stat-val" id="stat-rate">—</span><span class="stat-label">taux d'anomalie moy.</span></div>
+  <div class="stat"><span class="stat-val" id="stat-txns">—</span><span class="stat-label">transactions analysées</span></div>
+</div>
+
+<!-- ── Main layout ────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- ── Filters ─────────────────────────────────────────────── -->
+  <aside class="filters">
+
+    <button class="filter-reset" id="reset-btn" onclick="resetFilters()">Réinitialiser les filtres</button>
+
+    <div class="filter-group">
+      <h3>Secteur</h3>
+      <button class="filter-pill active" data-filter="sector" data-value="" onclick="setFilter('sector','',this)">Tous <span class="count" id="c-sector-all"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="SaaS" onclick="setFilter('sector','SaaS',this)">SaaS <span class="count" id="c-sector-SaaS"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="Finance" onclick="setFilter('sector','Finance',this)">Finance <span class="count" id="c-sector-Finance"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="Retail" onclick="setFilter('sector','Retail',this)">Retail <span class="count" id="c-sector-Retail"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="Manufacturing" onclick="setFilter('sector','Manufacturing',this)">Manufacturing <span class="count" id="c-sector-Manufacturing"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="Logistics" onclick="setFilter('sector','Logistics',this)">Logistics <span class="count" id="c-sector-Logistics"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="Media" onclick="setFilter('sector','Media',this)">Media <span class="count" id="c-sector-Media"></span></button>
+      <button class="filter-pill" data-filter="sector" data-value="Healthcare" onclick="setFilter('sector','Healthcare',this)">Healthcare <span class="count" id="c-sector-Healthcare"></span></button>
+    </div>
+
+    <div class="filter-group">
+      <h3>Niveau de vérification</h3>
+      <button class="filter-pill active" data-filter="verification_level" data-value="" onclick="setFilter('verification_level','',this)">Tous</button>
+      <button class="filter-pill" data-filter="verification_level" data-value="client_verified" onclick="setFilter('verification_level','client_verified',this)">&#x1F7E2; Validé client</button>
+      <button class="filter-pill" data-filter="verification_level" data-value="internal_only" onclick="setFilter('verification_level','internal_only',this)">&#x1F7E1; Interne uniquement</button>
+      <button class="filter-pill" data-filter="verification_level" data-value="reproducible_only" onclick="setFilter('verification_level','reproducible_only',this)">&#x1F535; Reproductible</button>
+    </div>
+
+    <div class="filter-group">
+      <h3>Type d'anomalie</h3>
+      <button class="filter-pill active" data-filter="anomaly_type" data-value="" onclick="setFilter('anomaly_type','',this)">Tous</button>
+      <button class="filter-pill" data-filter="anomaly_type" data-value="duplicate_payment" onclick="setFilter('anomaly_type','duplicate_payment',this)">Doublon de paiement</button>
+      <button class="filter-pill" data-filter="anomaly_type" data-value="unused_subscription" onclick="setFilter('anomaly_type','unused_subscription',this)">Abonnement inutilisé</button>
+      <button class="filter-pill" data-filter="anomaly_type" data-value="unused_license" onclick="setFilter('anomaly_type','unused_license',this)">Licence inutilisée</button>
+      <button class="filter-pill" data-filter="anomaly_type" data-value="cloud_waste" onclick="setFilter('anomaly_type','cloud_waste',this)">Cloud waste</button>
+      <button class="filter-pill" data-filter="anomaly_type" data-value="renegotiable_contract" onclick="setFilter('anomaly_type','renegotiable_contract',this)">Contrat renégociable</button>
+      <button class="filter-pill" data-filter="anomaly_type" data-value="telecom_overcharge" onclick="setFilter('anomaly_type','telecom_overcharge',this)">Surcharge télécom</button>
+    </div>
+
+  </aside>
+
+  <!-- ── Grid ──────────────────────────────────────────────────── -->
+  <main>
+    <div class="grid-header">
+      <span class="grid-count" id="grid-count">Chargement…</span>
+    </div>
+    <div class="audit-grid" id="audit-grid">
+      <!-- cards rendered by JS -->
+    </div>
+  </main>
+
+</div>
+
+<footer class="page-footer">
+  SIOS — Financial Audit Engine ·
+  <a href="https://github.com/haynbroit-alt/CPO">GitHub</a> ·
+  <a href="/docs">API Docs</a>
+  <br>
+  <span style="margin-top:6px;display:block">Tous les audits sont anonymisés. Les données brutes ne sont jamais exposées.</span>
+</footer>
+
+<script>
+const state = { sector: '', verification_level: '', anomaly_type: '' };
+let allAudits = [];
+
+const ANOMALY_LABELS = {
+  duplicate_payment: 'Doublon de paiement',
+  unused_subscription: 'Abonnement inutilisé',
+  unused_license: 'Licence inutilisée',
+  cloud_waste: 'Cloud waste',
+  cost_anomaly: 'Anomalie de coût',
+  telecom_overcharge: 'Surcharge télécom',
+  renegotiable_contract: 'Contrat renégociable',
+};
+
+const BADGE_CONFIG = {
+  client_verified:    { cls: 'badge-client',       label: '✔ Validé client' },
+  internal_only:      { cls: 'badge-internal',     label: '~ Interne' },
+  reproducible_only:  { cls: 'badge-reproducible', label: '⟳ Reproductible' },
+};
+
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+
+function setFilter(key, value, el) {
+  state[key] = value;
+  document.querySelectorAll(`[data-filter="${key}"]`).forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const hasFilter = Object.values(state).some(v => v !== '');
+  document.getElementById('reset-btn').classList.toggle('visible', hasFilter);
+  renderGrid();
+}
+
+function resetFilters() {
+  Object.keys(state).forEach(k => state[k] = '');
+  document.querySelectorAll('.filter-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === '');
+  });
+  document.getElementById('reset-btn').classList.remove('visible');
+  renderGrid();
+}
+
+function renderGrid() {
+  let audits = allAudits;
+
+  if (state.sector) audits = audits.filter(a => a.sector === state.sector);
+  if (state.verification_level) audits = audits.filter(a => a.verification_level === state.verification_level);
+  if (state.anomaly_type) audits = audits.filter(a => a.anomaly_types.includes(state.anomaly_type));
+
+  document.getElementById('grid-count').textContent =
+    audits.length === 0 ? 'Aucun résultat' :
+    audits.length === 1 ? '1 audit' :
+    `${audits.length} audits`;
+
+  const grid = document.getElementById('audit-grid');
+
+  if (audits.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><h3>Aucun audit ne correspond aux filtres sélectionnés.</h3><p>Essayez de modifier ou réinitialiser les filtres.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = audits.map(a => {
+    const badge = BADGE_CONFIG[a.verification_badge] || BADGE_CONFIG.reproducible_only;
+    const top3 = a.top_anomalies.slice(0, 3);
+    const confirmedSavings = a.confirmed_savings_eur != null;
+    const savingsVal = confirmedSavings ? a.confirmed_savings_eur : a.estimated_savings_eur;
+
+    return `
+<div class="audit-card" onclick="location.href='/audit/${a.id}'">
+  <div class="card-header">
+    <div>
+      <div class="card-id">AUDIT #${String(a.audit_number).padStart(4,'0')}</div>
+      <div style="margin-top:2px;font-size:0.78rem;color:#aaa">${new Date(a.audit_date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</div>
+    </div>
+    <span class="card-sector">${a.sector}</span>
+  </div>
+
+  <div>
+    <div class="badge ${badge.cls}" style="margin-bottom:10px">${badge.label}</div>
+    <div class="card-anomalies">
+      ${top3.map(an => `
+        <div class="anomaly-row">
+          <span class="anomaly-label">✓ ${ANOMALY_LABELS[an.type] || an.type} — ${an.vendor}</span>
+          <span class="anomaly-amount trust-${an.trust_tier.toLowerCase()}">${fmt(an.amount)}</span>
+        </div>
+      `).join('')}
+      ${a.anomalies_detected > 3 ? `<div style="font-size:0.8rem;color:#aaa;margin-top:2px">+${a.anomalies_detected - 3} autre${a.anomalies_detected - 3 > 1 ? 's' : ''} anomalie${a.anomalies_detected - 3 > 1 ? 's' : ''}</div>` : ''}
+    </div>
+  </div>
+
+  <div class="card-footer">
+    <div class="footer-savings">
+      <span class="savings-estimated">${confirmedSavings ? 'Estimé' : 'Estimé'} : ${fmt(a.estimated_savings_eur)}</span>
+      <span class="savings-confirmed ${confirmedSavings ? 'has-confirmed' : ''}">${confirmedSavings ? 'Confirmé : ' + fmt(a.confirmed_savings_eur) : 'Non encore confirmé'}</span>
+    </div>
+    <span class="footer-hash">${a.verification_level === 'client_verified' ? '✔ Signé' : ''}</span>
+  </div>
+</div>`;
+  }).join('');
+}
+
+function updateSectorCounts() {
+  const sectors = ['SaaS','Finance','Retail','Manufacturing','Logistics','Media','Healthcare'];
+  document.getElementById('c-sector-all').textContent = allAudits.length;
+  sectors.forEach(s => {
+    const el = document.getElementById(`c-sector-${s}`);
+    if (el) el.textContent = allAudits.filter(a => a.sector === s).length;
+  });
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/proofs/stats');
+    const d = await r.json();
+    document.getElementById('stat-audits').textContent = d.total_audits;
+    document.getElementById('stat-eur').textContent =
+      new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(d.total_confirmed_eur);
+    document.getElementById('stat-rate').textContent = d.anomaly_rate_pct + '%';
+    document.getElementById('stat-txns').textContent =
+      new Intl.NumberFormat('fr-FR').format(d.total_transactions);
+  } catch(e) {}
+}
+
+async function loadAudits() {
+  try {
+    const r = await fetch('/proofs?limit=100');
+    const d = await r.json();
+    allAudits = d.audits;
+    updateSectorCounts();
+    renderGrid();
+  } catch(e) {
+    document.getElementById('grid-count').textContent = 'Erreur de chargement';
+  }
+}
+
+loadStats();
+loadAudits();
+</script>
+
+</body>
+</html>

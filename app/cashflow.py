@@ -34,6 +34,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from sios.pipeline import run_file
+from sios.proof_layer.routes import router as proof_router
 from sios.store import SqliteStore
 
 logger = logging.getLogger(__name__)
@@ -333,6 +334,8 @@ app = FastAPI(title="SIOS Cashflow", docs_url=None, redoc_url=None, lifespan=_li
 if _STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
+app.include_router(proof_router)
+
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
@@ -348,6 +351,24 @@ def results_page(session_id: str) -> HTMLResponse:
     if page.exists():
         return HTMLResponse(page.read_text().replace("{{SESSION_ID}}", session_id))
     return HTMLResponse(_fallback_results(session_id))
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+def gallery_page() -> HTMLResponse:
+    page = _STATIC_DIR / "proof-gallery.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Gallery not found</h1>")
+
+
+@app.get("/audit/{audit_id}", response_class=HTMLResponse)
+def audit_viewer_page(audit_id: str) -> HTMLResponse:
+    page = _STATIC_DIR / "audit-viewer.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Viewer not found</h1>")
+
+
+@app.get("/vault", response_class=HTMLResponse)
+def vault_page() -> HTMLResponse:
+    page = _STATIC_DIR / "vault.html"
+    return HTMLResponse(page.read_text() if page.exists() else "<h1>Vault not found</h1>")
 
 
 # ── Upload ─────────────────────────────────────────────────────────────────────
