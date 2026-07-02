@@ -64,6 +64,39 @@ Détecter, beaucoup le font. **Prouver de façon reproductible et partageable, p
 
 ---
 
+## Niveaux — où on est, où on va
+
+La vision cible est ⭐⭐⭐⭐⭐ partout. L'état actuel, évalué honnêtement sur le dépôt tel qu'il est :
+
+| Niveau | Actuel | Vision cible | Ce qui ferme l'écart |
+|--------|--------|--------------|----------------------|
+| **Vision** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | La vision est écrite, focalisée, AXIOM parqué. La 5ᵉ étoile ne s'écrit pas — elle se gagne quand un tiers (client, comptable, vendeur) la valide par ses actes. |
+| **Architecture** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Le paquet `sios/` est modulaire (core, connectors, proof_layer, api), mais l'ancien `app/` et `axiom/` coexistent encore. Supprimer le legacy, un seul chemin de code. |
+| **Code** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~7 000 lignes, CI verte, 42 tests qui passent. Mais la couverture est concentrée sur l'ancien module — le proof layer et les connecteurs, cœur de la vision, sont peu testés. |
+| **Infrastructure** | ⭐⭐ | ⭐⭐⭐⭐⭐ | Render plan gratuit, Docker, CI. Il manque : monitoring, sauvegardes du store, environnement de staging, et une URL verify qui ne peut jamais tomber — c'est la crédibilité du format. |
+| **Produit** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | La boucle existe de bout en bout : CLI → CPO → page verify → paiement 49 €. Mais elle n'a pas encore été traversée par un utilisateur réel. La boucle de partage doit être vécue, pas seulement câblée. |
+| **Traction** | ⭐ | ⭐⭐⭐⭐⭐ | La galerie est remplie de données anonymisées de démonstration. Zéro recouvrement réel documenté. Tout commence ici : 10–15 audits manuels, un secteur, des vraies preuves. |
+
+Les niveaux ne se remplissent pas dans n'importe quel ordre : **Traction tire tout le reste.** Un seul recouvrement réel vaut plus qu'une étoile de plus sur chacune des autres lignes.
+
+---
+
+## La discipline de travail
+
+Les étoiles ne montent pas en travaillant plus — elles montent en travaillant sur les bonnes priorités. La répartition du temps :
+
+| Part | Axe | Concrètement |
+|------|-----|--------------|
+| **40 %** | Produit | Un parcours utilisateur sans friction, zéro bug sur le chemin critique, des tests sur ce qui porte la vision — le moteur de preuve et les connecteurs. |
+| **40 %** | Utilisateurs & premiers clients | Faire passer l'audit à de vraies entreprises, observer où elles bloquent, corriger *avant* d'ajouter. Documenter les économies réellement trouvées ; en tirer témoignages et études de cas. |
+| **20 %** | Infrastructure, tests, maintenance | Ce qu'il faut pour que le lien verify ne tombe jamais — pas plus. |
+
+Et une boucle qui gouverne le tout : **mesurer** (temps d'analyse, taux de réussite des détections, conversion des essais gratuits) → **corriger les points faibles** → **répéter**.
+
+La règle de décision : le moteur d'audit fonctionne déjà. La prochaine unité de valeur n'est donc pas une fonctionnalité — c'est un audit réalisé par un vrai utilisateur, avec un résultat concret. Ces retours ciblent les améliorations produit bien mieux que n'importe quelle liste de features.
+
+---
+
 ## L'honnêteté qui fait tenir la vision
 
 **AXIOM n'en fait pas partie.** Le protocole d'allocation de capital aux agents est une *autre* vision, plus grande, et c'est exactement ce qui la rend dangereuse maintenant — elle dilue celle-ci. Parquée, datée, on y revient quand SIOS gagne de l'argent.
