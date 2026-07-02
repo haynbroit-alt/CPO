@@ -64,6 +64,23 @@ Détecter, beaucoup le font. **Prouver de façon reproductible et partageable, p
 
 ---
 
+## Niveaux — où on est, où on va
+
+La vision cible est ⭐⭐⭐⭐⭐ partout. L'état actuel, évalué honnêtement sur le dépôt tel qu'il est :
+
+| Niveau | Actuel | Vision cible | Ce qui ferme l'écart |
+|--------|--------|--------------|----------------------|
+| **Vision** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | La vision est écrite, focalisée, AXIOM parqué. La 5ᵉ étoile ne s'écrit pas — elle se gagne quand un tiers (client, comptable, vendeur) la valide par ses actes. |
+| **Architecture** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Le paquet `sios/` est modulaire (core, connectors, proof_layer, api), mais l'ancien `app/` et `axiom/` coexistent encore. Supprimer le legacy, un seul chemin de code. |
+| **Code** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~7 000 lignes, CI en place, 30 tests verts — mais 12 tests legacy cassés sur l'ancien module. Nettoyer, couvrir le proof layer, zéro test rouge toléré. |
+| **Infrastructure** | ⭐⭐ | ⭐⭐⭐⭐⭐ | Render plan gratuit, Docker, CI. Il manque : monitoring, sauvegardes du store, environnement de staging, et une URL verify qui ne peut jamais tomber — c'est la crédibilité du format. |
+| **Produit** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | La boucle existe de bout en bout : CLI → CPO → page verify → paiement 49 €. Mais elle n'a pas encore été traversée par un utilisateur réel. La boucle de partage doit être vécue, pas seulement câblée. |
+| **Traction** | ⭐ | ⭐⭐⭐⭐⭐ | La galerie est remplie de données anonymisées de démonstration. Zéro recouvrement réel documenté. Tout commence ici : 10–15 audits manuels, un secteur, des vraies preuves. |
+
+Les niveaux ne se remplissent pas dans n'importe quel ordre : **Traction tire tout le reste.** Un seul recouvrement réel vaut plus qu'une étoile de plus sur chacune des autres lignes.
+
+---
+
 ## L'honnêteté qui fait tenir la vision
 
 **AXIOM n'en fait pas partie.** Le protocole d'allocation de capital aux agents est une *autre* vision, plus grande, et c'est exactement ce qui la rend dangereuse maintenant — elle dilue celle-ci. Parquée, datée, on y revient quand SIOS gagne de l'argent.
