@@ -72,7 +72,7 @@ La vision cible est ⭐⭐⭐⭐⭐ partout. L'état actuel, évalué honnêteme
 |--------|--------|--------------|----------------------|
 | **Vision** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | La vision est écrite, focalisée, AXIOM parqué. La 5ᵉ étoile ne s'écrit pas — elle se gagne quand un tiers (client, comptable, vendeur) la valide par ses actes. |
 | **Architecture** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Le paquet `sios/` est modulaire (core, connectors, proof_layer, api), mais l'ancien `app/` et `axiom/` coexistent encore. Supprimer le legacy, un seul chemin de code. |
-| **Code** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~7 000 lignes, CI en place, 30 tests verts — mais 12 tests legacy cassés sur l'ancien module. Nettoyer, couvrir le proof layer, zéro test rouge toléré. |
+| **Code** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~7 000 lignes, CI verte, 42 tests qui passent. Mais la couverture est concentrée sur l'ancien module — le proof layer et les connecteurs, cœur de la vision, sont peu testés. |
 | **Infrastructure** | ⭐⭐ | ⭐⭐⭐⭐⭐ | Render plan gratuit, Docker, CI. Il manque : monitoring, sauvegardes du store, environnement de staging, et une URL verify qui ne peut jamais tomber — c'est la crédibilité du format. |
 | **Produit** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | La boucle existe de bout en bout : CLI → CPO → page verify → paiement 49 €. Mais elle n'a pas encore été traversée par un utilisateur réel. La boucle de partage doit être vécue, pas seulement câblée. |
 | **Traction** | ⭐ | ⭐⭐⭐⭐⭐ | La galerie est remplie de données anonymisées de démonstration. Zéro recouvrement réel documenté. Tout commence ici : 10–15 audits manuels, un secteur, des vraies preuves. |
