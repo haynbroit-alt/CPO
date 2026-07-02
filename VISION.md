@@ -81,6 +81,22 @@ Les niveaux ne se remplissent pas dans n'importe quel ordre : **Traction tire to
 
 ---
 
+## La discipline de travail
+
+Les étoiles ne montent pas en travaillant plus — elles montent en travaillant sur les bonnes priorités. La répartition du temps :
+
+| Part | Axe | Concrètement |
+|------|-----|--------------|
+| **40 %** | Produit | Un parcours utilisateur sans friction, zéro bug sur le chemin critique, des tests sur ce qui porte la vision — le moteur de preuve et les connecteurs. |
+| **40 %** | Utilisateurs & premiers clients | Faire passer l'audit à de vraies entreprises, observer où elles bloquent, corriger *avant* d'ajouter. Documenter les économies réellement trouvées ; en tirer témoignages et études de cas. |
+| **20 %** | Infrastructure, tests, maintenance | Ce qu'il faut pour que le lien verify ne tombe jamais — pas plus. |
+
+Et une boucle qui gouverne le tout : **mesurer** (temps d'analyse, taux de réussite des détections, conversion des essais gratuits) → **corriger les points faibles** → **répéter**.
+
+La règle de décision : le moteur d'audit fonctionne déjà. La prochaine unité de valeur n'est donc pas une fonctionnalité — c'est un audit réalisé par un vrai utilisateur, avec un résultat concret. Ces retours ciblent les améliorations produit bien mieux que n'importe quelle liste de features.
+
+---
+
 ## L'honnêteté qui fait tenir la vision
 
 **AXIOM n'en fait pas partie.** Le protocole d'allocation de capital aux agents est une *autre* vision, plus grande, et c'est exactement ce qui la rend dangereuse maintenant — elle dilue celle-ci. Parquée, datée, on y revient quand SIOS gagne de l'argent.
